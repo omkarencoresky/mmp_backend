@@ -1,6 +1,4 @@
-import uuid
 from django.db import models
-from django.utils import timezone
 from django.contrib.auth.hashers import make_password, check_password
 
 
@@ -20,7 +18,7 @@ class User(models.Model):
         'other': 'other',
         'female': 'female',
     }
-
+    id = models.AutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True, null=True)
@@ -82,45 +80,28 @@ class User_Address(models.Model):
     class Meta:
         db_table = 'user_address'
 
-    
+
 class OAuthApplication(models.Model):
-    name = models.CharField(max_length=255)
-    client_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    client_secret = models.UUIDField(default=uuid.uuid4, editable=False)
-    redirect_uris = models.TextField()
+    id = models.AutoField(primary_key=True)
+    client_id = models.CharField(max_length=255, unique=True)
+    client_secret = models.CharField(max_length=255)
+    redirect_uri = models.URLField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     class Meta:
         db_table = 'oauth_application'
 
-    def __str__(self):
-        return self.name
 
 class OAuthAccessToken(models.Model):
-    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    application = models.ForeignKey(OAuthApplication, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    client = models.ForeignKey(OAuthApplication, on_delete=models.CASCADE)
+    access_token = models.CharField(max_length=255, unique=True)
+    refresh_token = models.CharField(max_length=255, blank=True, null=True)
+    token_type = models.CharField(max_length=50)
     expires_at = models.DateTimeField()
-    scope = models.TextField(default='read write')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'oauth_access_token'
-
-    @property
-    def is_expired(self):
-        return timezone.now() >= self.expires_at
-
-    def __str__(self):
-        return f"{self.user.username} - {self.application.name}"
-
-class OAuthRefreshToken(models.Model):
-    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    access_token = models.OneToOneField(OAuthAccessToken, on_delete=models.CASCADE)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'oauth_refresh_token'

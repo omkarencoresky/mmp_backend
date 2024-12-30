@@ -1,23 +1,21 @@
 import os
+import secrets
+import datetime
+
+from functools import wraps
+from datetime import datetime
+from datetime import timedelta
 from django.conf import settings
-from common_app.models import User
+from django.http import JsonResponse
 from django.http import JsonResponse
 from django.utils.text import slugify
+from common_app.models import OAuthAccessToken
+from common_app.models import User, User_Address
+from common_app.models import OAuthAccessToken, OAuthApplication
 
 
-# from datetime import timedelta
-# from django.conf import settings
-# from django.utils import timezone
-# from oauth2_provider.models import Application
-# from oauth2_provider.models import AccessToken
-# from oauth2_provider.models import RefreshToken
-# from django.utils.crypto import get_random_string
-# from django.core.exceptions import ValidationError
-# from oauth2_provider.settings import oauth2_settings
-# from django.views.decorators.csrf import csrf_exempt
-# from django.contrib.auth.models import User as builtin_User
-
-def custom_response(success: bool = None, message: str = None, data: JsonResponse = None, status: int = None) -> JsonResponse:
+def create_response(success: bool = None, message: str = None, data: JsonResponse = None, 
+                    status: int = None) -> JsonResponse:
     """
     Generates a JsonResponse with the given success flag, message, and HTTP status code.
 
@@ -37,35 +35,36 @@ def custom_response(success: bool = None, message: str = None, data: JsonRespons
     if data is not None:
         response_data["data"] = data
 
-    return JsonResponse(response_data, status=status)
+    return JsonResponse(
+        response_data, 
+        status=status
+    )
 
 
 def save_image(uploaded_image, username: str, role: str):
     """
-    Saves the uploaded profile image to the server in a role-specific directory and returns the URL of the saved image.
+    Saves the uploaded profile image to the server in a role-specific directory and 
+        returns the URL of the saved image.
 
     Arguments:
         uploaded_image (file): The uploaded image file to be saved.
         username (str): The username to be used in the file name of the saved image.
-        role (str): The role of the user, used to determine the subfolder (e.g., 'driver', 'package_provider', etc.)
+        role (str): The role of the user, used to determine the subfolder (e.g., 'driver', 
+            'package_provider', etc.)
 
     Returns:
-        str or None: The URL of the saved profile image if successful, or None if no image is uploaded.
+        str or None: The URL of the saved profile image if successful, or None if no 
+            image is uploaded.
     """
-    if not uploaded_image or role not in ["user", "driver", "travel_admin", "package_admin", "travel_sub_admin", 
-                                            "package_sub_admin"]:
-        return custom_response(success=False, message="Invalid role. Must be one of 'user', 'driver', 'travel_admin', \
-                                               'package_admin', 'travel_sub_admin', or 'package_sub_admin'.", status=500)
 
     try:
         extension = uploaded_image.name.split('.')[-1].lower()
         folder_path = os.path.join(settings.BASE_DIR, 'media', role)
-        print('folder_path',folder_path)
+        
         os.makedirs(folder_path, exist_ok=True)
 
         filename = f"{slugify(username)}_image.{extension}"
         file_path = os.path.join(folder_path, filename)
-        print('file_path',file_path)
 
         with open(file_path, 'wb+') as f:
             for chunk in uploaded_image.chunks():
@@ -74,53 +73,59 @@ def save_image(uploaded_image, username: str, role: str):
         return os.path.join(settings.MEDIA_URL, role, filename)
     
     except Exception:
-        return custom_response(success=False, message="Error saving profile image", status=500)
+        return None
 
 
-
-def username_exist(username):
+def is_username_exist(username):
     """
-    Checks if a username exists in either the PackageProviderUser or builtin_User models.
+    Checks if a username exists in the User model.
 
     Args:
         username (str): The username to check for existence.
 
     Returns:
-        str: Error message if username exists, else None.
+        bool: True if the username exists, False otherwise.
     """
-    if User.objects.filter(username=username).exists():
-        return 'Username is already exist'
-    return None
+    return User.objects.filter(username=username).exists()
 
 
-def email_exist(email):
+def is_email_exist(email):
     """
-    Checks if an email address exists in either the PackageProviderUser or builtin_User models.
+    Checks if an email address exists in the User model.
 
     Args:
         email (str): The email address to check for existence.
 
     Returns:
-        str: Error message if email exists, else None.
+        bool: True if the email exists, False otherwise.
     """
-    if User.objects.filter(email=email).exists():
-        return 'Email is already exist'
-    return None
+    return User.objects.filter(email=email).exists()
 
 
-def phone_number_exist(phone_no):
+def is_phone_number_exist(phone_no):
     """
-    Checks if a phone number exists in the PackageProviderUser model.
+    Checks if a phone number exists in the User model.
 
     Args:
         phone_no (str): The phone number to check for existence.
 
     Returns:
-        str: Error message if phone number exists, else None.
+        bool: True if the phone number exists, False otherwise.
     """
-    if User.objects.filter(phone_no=phone_no).exists():
-        return 'Phone number is already exist'
-    return None
+    return User.objects.filter(phone_no=phone_no).exists()
+
+
+def is_user_id_exist(user_id):
+    """
+    Checks if a user with the specified ID exists in the User model.
+
+    Args:
+        user_id (int): The ID of the user to check for existence.
+
+    Returns:
+        bool: True if the user exists, False otherwise.
+    """
+    return User.objects.filter(id=user_id).exists()
 
 
 def is_record_exists(username=None, email=None, phone_no=None):
@@ -137,19 +142,122 @@ def is_record_exists(username=None, email=None, phone_no=None):
     """
     
     if username:
-        message = username_exist(username)
-        if message:
-            return custom_response(success=False, message=message, status=400)
+        username = is_username_exist(username)
+
+        if username:
+            return create_response(
+                success=False, 
+                message="User with this username already exists", 
+                status=400
+            )
     
     if email:
-        message = email_exist(email)
-        if message:
-            return custom_response(success=False, message=message, status=400)
+        email = is_email_exist(email)
+
+        if email:
+            return create_response(
+                success=False, 
+                message="User with this email already exists", 
+                status=400
+            )
 
     if phone_no:
-        message = phone_number_exist(phone_no)
-        if message:
-            return custom_response(success=False, message=message, status=400)
+        phone_no = is_phone_number_exist(phone_no)
+
+        if phone_no:
+            return create_response(
+                success=False, 
+                message="User with this phone number already exists", 
+                status=400
+            )
     
     return None
 
+
+def generate_token(user):
+    """
+    Generates a secure access token for the authenticated user and stores it in the database.
+
+    This function creates a new access token for the provided user. It performs the following:
+    - Generates a random access token using the `secrets.token_hex` method.
+    - Sets an expiration time for the token, which is one hour from the current time.
+    - Retrieves client details associated with the OAuth application.
+    - Creates or updates an OAuth access token record for the user in the database, 
+        ensuring that the token is securely stored.
+
+    Args:
+        user (User): The user object for whom the access token is being generated. 
+            This user must be authenticated.
+
+    Returns:
+        OAuthAccessToken: The generated or updated OAuth access token object, which contains:
+            - The access token value (`access_token`).
+            - The expiration date and time (`expires_at`).
+            - The type of token, which is always set to `'Bearer'` (`token_type`).
+    """
+    try:
+        access_token = secrets.token_hex(32)
+        expires_at = datetime.now() + timedelta(hours=1)
+        client_details = OAuthApplication.objects.get(id=1)
+
+        token, _ = OAuthAccessToken.objects.update_or_create(
+            user=user,
+            client=client_details,
+            defaults={
+                'access_token': access_token,
+                'expires_at': expires_at,
+                'token_type': 'Bearer',
+            }
+        )
+        return token
+    
+    except OAuthApplication.DoesNotExist:
+        return None
+    
+    except Exception as e:
+        return None
+
+
+
+# def token_required(view_func):
+#     """
+#     Decorator to validate the access token from the Authorization header.
+#     """
+#     @wraps(view_func)
+#     def wrapper(request, args, *kwargs):
+#         auth_header = request.META.get('HTTP_AUTHORIZATION')
+        
+#         if not auth_header:
+#             return JsonResponse({
+#                 "success": False,
+#                 "message": "Authorization header is missing."
+#             }, status=401)
+        
+#         try:
+#             token_type, token = auth_header.split()
+            
+#             if token_type.lower() != 'bearer':
+#                 return JsonResponse({
+#                     "success": False,
+#                     "message": "Invalid token type. Only 'Bearer' tokens are supported."
+#                 }, status=401)
+            
+#             access_token = OAuthAccessToken.objects.get(access_token=token)
+            
+#             if access_token.expires_at < datetime.now():
+#                 return JsonResponse({
+#                     "success": False,
+#                     "message": "Token has expired."
+#                 }, status=401)
+            
+#             request.user = access_token.user
+            
+#         except (ValueError, OAuthAccessToken.DoesNotExist):
+#             return JsonResponse({
+#                 "success": False,
+#                 "message": "Invalid or missing token."
+#             }, status=401)
+        
+#         return view_func(request, args, *kwargs)
+    
+#     return wrapper

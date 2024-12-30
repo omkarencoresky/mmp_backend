@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from utils.utils import custom_response
+from utils.utils import create_response
 from django.core.validators import RegexValidator
 
 class UserRegistrationSerializer(serializers.Serializer):
@@ -129,6 +129,6 @@ class UserRegistrationSerializer(serializers.Serializer):
                 errors[field] = error_message
 
             if errors:
-                return custom_response(success=False, message=errors, status=404)
+                return create_response(success=False, message=errors, status=404)
         
         return data

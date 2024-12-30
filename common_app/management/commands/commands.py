@@ -7,10 +7,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         OAuthApplication.objects.create(
-            name="mmp_app",
+            # name="mmp_app",
             client_id=str(uuid.uuid4()),
             client_secret=str(uuid.uuid4()),
-            redirect_uris="http://localhost:8000/oauth/callback/",
+            redirect_uri="http://localhost:8000/oauth/callback/",
             # client_type="confidential",
             # authorization_grant_type="authorization_code",
             # scope="read write",

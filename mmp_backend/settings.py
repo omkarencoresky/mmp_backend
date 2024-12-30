@@ -107,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # AUTH_USER_MODEL = 'common_app.User'
 
 AUTHENTICATION_BACKENDS = [
-    'common_app.backends.EmailBackend',  # Path to your custom backend
+    'authentication.authentication.OAuthBackend',  # Path to your custom backend
 ]
 
 

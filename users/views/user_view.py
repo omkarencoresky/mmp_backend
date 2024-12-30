@@ -1,39 +1,22 @@
-from django.views import View
-from rest_framework import status
 from common_app.models import User
-from django.http import JsonResponse
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.contrib.auth import authenticate
-from utils.utils import save_image, is_record_exists, custom_response
+from authentication.authentication import OAuthBackend
+from users.serializer.login_serializer import UserLoginSerializer
 from users.serializer.register_serializer import UserRegistrationSerializer
-# from users. import validate_user_register, validate_user_login
-# from .validators import email_exist, username_exist, phone_number_exist
+from utils.utils import save_image, is_record_exists, create_response, generate_token
 
 class Register(APIView):
     """
-    A view that handles user registration.
+    A view that handles the registration of a new user.
 
-    This view processes a POST request to register a new user. It validates the provided data,
-    checks for duplicate records (username, email, and phone number), and handles optional 
-    profile image uploads. If validation passes, a new user is created and stored in the database.
+    This view processes a POST request where user registration details are provided.
+    It validates the data, checks for existing records (username, email, phone), 
+    and optionally handles profile image uploads. If validation passes, it creates 
+    a new user in the database.
 
-    Attributes:
-        None
-
-    Methods:
-        post(request, *args, **kwargs):
-            Handles the user registration process, including validation, duplicate checks,
-            profile image handling, and user creation.
-
-    Responses:
-        - HTTP 201 (Created): On successful user registration.
-        - HTTP 400 (Bad Request): If validation errors occur.
-        - HTTP 409 (Conflict): If a duplicate record is found (username, email, or phone).
-        - HTTP 500 (Internal Server Error): For any unexpected errors.
     """
     
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         """
         Handles POST requests to register a new user.
 
@@ -44,13 +27,15 @@ class Register(APIView):
         - Creates a new user if all validation checks pass.
 
         Args:
-            request (Request): The HTTP request object containing user data.
+            request (Request): The HTTP request object containing user registration data, including username, 
+            email, phone, and optional profile image.
 
         Returns:
             Response: A response with a status code and message indicating success or failure.
-
-        Raises:
-            Exception: If an unexpected error occurs during registration.
+            - HTTP 201: User registered successfully.
+            - HTTP 400: Validation errors.
+            - HTTP 409: Duplicate username, email, or phone.
+            - HTTP 500: Unexpected error.
         """
         try:
             serializer = UserRegistrationSerializer(data=request.data)
@@ -62,73 +47,132 @@ class Register(APIView):
                 profile_image = request.FILES.get('profile_url')
                 profile_url = None
                
-                response = is_record_exists(username=validated_data['username'], 
-                                    phone_no=validated_data['phone_no'],
-                                    email=validated_data['email'])
+                response = is_record_exists(
+                    username=validated_data['username'], 
+                    phone_no=validated_data['phone_no'],
+                    email=validated_data['email']
+                )
                 
                 if response:
                     return response
 
-                if profile_image and validated_data.get('username') and validated_data.get('role'):
-                    profile_url = save_image(profile_image, 
-                                        validated_data.get('username'), 
-                                        validated_data.get('role'))
+                if profile_image:
+                    profile_url = save_image(profile_image,  validated_data.get('username'), 
+                                    validated_data.get('role'))
 
                 validated_data['profile_url'] = profile_url
-                User.objects.create(**validated_data)
 
-                return custom_response(success=True, 
-                                       message="User registered successfully", 
-                                       status=201)
+                User.objects.create(**validated_data)
+                return create_response(
+                    success=True, 
+                    message="User registered successfully", 
+                    status=201
+                )
             
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
-                return custom_response(success=False, 
-                                       message=error_message, 
-                                       status=400)
+                return create_response(
+                    success=False, 
+                    message=error_message, 
+                    status=400
+                )
             
         except Exception as e:
-            return custom_response(success=False, 
-                                   message='Something went wrong', 
-                                   status=500)
+            return create_response(
+                success=False, 
+                message='Something went wrong', 
+                status=500
+            )
 
 
 
-class Login(View):
+class Login(APIView):
     """
-    Handles user login by validating credentials, authenticating the user, and generating an access token.
+    A view that handles user login and authentication.
+
+    This view processes a POST request containing the user's email and password.
+    If the credentials are valid, an access token is generated and returned. 
+    Otherwise, an error message is returned indicating the failure reason.
+
     """
-    
-    def post(self, request, *args, **kwargs):
+
+    def post(self, request):
+        """
+        Handles POST requests to authenticate a user.
+
+        This method:
+        - Extracts the email and password from the request data.
+        - Validates that both fields are provided.
+        - Authenticates the user using the `OAuthBackend` authentication mechanism.
+        - Generates an access token if authentication is successful.
+
+        Args:
+            request (Request): The HTTP request object containing user login credentials (email and password).
+
+        Returns:
+            Response: A JSON response with a status code and message.
+            - On success (HTTP 200): success (bool), message (str), data (dict) with user ID, 
+                access token, token type, and expiration.
+            - On failure (HTTP 400/401): success (bool), message (str) with error details.
+            - On error (HTTP 500): success (bool), message (str) with a generic error message.
+        """
         try:
-            form_data = request.POST
-            user = User.objects.filter(username=form_data['email']).first()
+            serializer = UserLoginSerializer(data=request.data)
+            if serializer.is_valid():
 
-            if not user:
-                return custom_response(success=False, message="No user found with these credentials.", status=404)
-                        
-            authenticate_user = authenticate(request, username=form_data.get('email'), password=form_data.get('password'))
-
-            if authenticate_user is not None:
-                access_token = generate_token(authenticate_user)
+                form_data = request.POST
+                email = form_data.get('email')
+                password = form_data.get('password')
                 
-                return JsonResponse({
-                    "success": True,
-                    "message": 'User logged in successfully',
-                    "access_token": access_token.token,
-                    "token_type": 'Bearer',
-                    "expires_in": (access_token.expires.strftime('%Y-%m-%d %H:%M:%S'))
-                }, status=200)
-            
+                authenticate_user = OAuthBackend.authenticate(email=email, password=password)
+
+                if authenticate_user is None:
+                    return create_response(
+                        success=False, 
+                        message="Invalid email or password.", 
+                        status=401
+                    )
+                    
+
+                access_token = generate_token(authenticate_user)
+
+                if access_token is None:
+                    return create_response(
+                        success=False, 
+                        message="Something went wrong, Unable to generate token.", 
+                        status=500
+                    )
+
+                data = {
+                    "user_id": authenticate_user.id,
+                    "access_token": access_token.access_token,
+                    "token_type": access_token.token_type,
+                    "expires_in": access_token.expires_at.strftime('%Y-%m-%d %H:%M:%S')
+                }
+
+                return create_response(
+                    success=True, 
+                    message="User logged in successfully.", 
+                    data=data, 
+                    status=200
+                )
+                                    
             else:
-                return JsonResponse({
-                    "success": False, 
-                    "message": "Invalid username or password"
-                }, status=400)
+                _, error_details = next(iter(serializer.errors.items()))
+                error_message = error_details[0]
+                
+                return create_response(
+                    success=False, 
+                    message=error_message, 
+                    status=400
+                )
 
         except Exception as e:
-            return JsonResponse({
-                "success": False, 
-                "message": "Something went wrong"
-            }, status=500)
+            return create_response(
+                success=False, 
+                message="Something went wrong, try again later.", 
+                status=500
+            )
+
+
