@@ -47,7 +47,7 @@ class OAuthBackend(BaseBackend):
             return None
 
 
-    def get_user(self, user_id):
+    def get_user_by_id(self, user_id):
         """
         Retrieves a user object by their ID.
 

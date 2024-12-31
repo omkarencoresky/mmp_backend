@@ -32,7 +32,7 @@ def create_response(success: bool = None, message: str = None, data: JsonRespons
         "success": success,
         "message": message
     }
-    if data is not None:
+    if not data:
         response_data["data"] = data
 
     return JsonResponse(
@@ -216,6 +216,89 @@ def generate_token(user):
     
     except Exception as e:
         return None
+    
+
+
+def retrieve_user_details(user_id=None):
+    """
+    Checks if a user with the specified ID exists in the User model.
+
+    Args:
+        user_id (int): The ID of the user to check for existence.
+
+    Returns:
+        bool: True if the user exists, False otherwise.
+    """
+    try:
+        if not user_id:
+            data = User.objects.filter(id=user_id).values(
+                        'username', 'first_name', 'last_name', 'middle_name', 'email'
+                        , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
+                    ).first()
+            return data
+        
+        else:
+            data =  User.objects.filter().values(
+                        'username', 'first_name', 'last_name', 'middle_name', 'email'
+                        , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
+                    ).all()
+            return list(data)
+
+    except Exception as e:
+        return None
+    
+
+def fetch_address_details(user_id=None, address_id=None):
+    """
+    Checks if a user with the specified ID exists in the User model.
+
+    Args:
+        user_id (int): The ID of the user to check for existence.
+
+    Returns:
+        bool: True if the user exists, False otherwise.
+    """
+    try:
+        if not address_id:
+            data = User_Address.objects.filter(id=address_id).values(
+                    'id', 'user_id', 'street_address', 'city', 'state', 'pin_code', 'country'
+                ).first()
+            return data
+        
+        if not user_id:
+            data =  User_Address.objects.filter(user_id=user_id).values(
+                    'id', 'user_id', 'street_address', 'city', 'state', 'pin_code', 'country'
+                ).all()
+            return list(data)
+
+    except Exception as e:
+        return None
+    
+
+def get_user_by_id(user_id):
+    """
+    Checks if a user with the specified ID exists in the User model.
+
+    Args:
+        user_id (int): The ID of the user to check for existence.
+
+    Returns:
+        bool: True if the user exists, False otherwise.
+    """
+    return User.objects.filter(id=user_id).first()
+
+
+def get_address_by_id(address_id):
+    """
+    Checks if a address with the specified ID exists in the User model.
+
+    Args:
+        address_id (int): The ID of the address to check for existence.
+
+    Returns:
+        bool: True if the address exists, False otherwise.
+    """
+    return User_Address.objects.filter(id=address_id).first()
 
 
 

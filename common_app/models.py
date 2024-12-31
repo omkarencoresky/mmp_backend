@@ -59,7 +59,7 @@ class User(models.Model):
         """
         return check_password(raw_password, self.password)
     
-    def get_username(self):
+    def get_user_by_idname(self):
         """
         Return the username used for authentication, which is 'email' in this case.
         """
