@@ -1,43 +1,54 @@
+import uuid
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 
 
+class Role(models.Model):
+    """
+    Model representing a role with a unique ID, name, description,
+    and timestamps for creation and updates.
+    """
+    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    name = models.CharField(max_length=100,unique=True,null=False)
+    description = models.TextField(blank=True,null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = 'roles'
+
+
 
 class User(models.Model):
-    ROLE_CHOICES = {
-        'user': 'user',
-        'driver': 'driver',
-        'travel_admin': 'travel_admin',
-        'package_admin': 'package_admin',
-        'travel_sub_admin': 'travel_sub_admin',
-        'package_sub_admin': 'package_sub_admin',
-    }
 
-    GENDER = {
+    GENDER_CHOICES = {
         'male': 'male',
         'other': 'other',
         'female': 'female',
     }
-    id = models.AutoField(primary_key=True)
-    username = models.CharField(max_length=100, unique=True)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='users_role_id')
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100)
+    created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_users')
     email = models.EmailField(max_length=50, unique=True)
-    phone_no = models.CharField(max_length=15, unique=True)
-    gender = models.CharField(max_length=50, choices=GENDER)
-    date_of_birth = models.DateField(blank=True, null=True)
-    is_active = models.BooleanField(default=True)
-    profile_url = models.URLField(max_length=200, blank=True, null=True)
-    last_login = models.DateTimeField(blank=True, null=True)
     password = models.CharField(max_length=255)
-    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='user')
-    creator_id = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_users')
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    date_of_birth = models.DateField(blank=True, null=True)
+    phone_no = models.CharField(max_length=15, unique=True)
+    country_code = models.CharField(max_length=10, default='+1')
+    profile_url = models.URLField(max_length=200, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(blank=True, null=True)    
+    last_login = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'phone_no', 'first_name', 'last_name', 'password']
 
 
     class Meta:

@@ -3,31 +3,42 @@ from django.core.validators import RegexValidator
 
 class UserLoginSerializer(serializers.Serializer):
     """
-    Serializer for user login.
+    Serializer for user login using phone number and OTP.
 
-    This serializer handles validation of user login data, including email and password.
+    This serializer handles validation of login data, including phone number, 
+    country code, and optionally OTP input for authentication.
     """
-    email = serializers.EmailField(
-        max_length=50,
+
+    phone_no = serializers.CharField(
+        max_length=15,
+        validators=[RegexValidator(regex=r'^\d{10,15}$',
+                                   message='Phone number must be between 10 and 15 digits.')],
         error_messages={
-            'invalid': 'Enter a valid email address.',
-            'max_length': 'Email must not exceed 50 characters.',
-            'required': 'Email is required.',
-            'blank': 'Email field may not be blank.',
+            'max_length': 'Phone number must not exceed 15 digits.',
+            'required': 'Phone number is required.',
+            'blank': 'Phone number field may not be blank.',
         }
     )
 
-    password = serializers.CharField(
-        min_length=8,
-        max_length=255,
-        write_only=True,
-        validators=[RegexValidator(regex=r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$',
-                    message='''Password must be at least 8 characters long and include both letters and numbers.''')],
+    country_code = serializers.CharField(
+        max_length=5,
+        validators=[RegexValidator(regex=r'^\+\d{1,4}$',
+                                   message='Country code must start with "+" followed by 1-4 digits.')],
         error_messages={
-            'min_length': 'Password must be at least 8 characters long.',
-            'max_length': 'Password must not exceed 255 characters.',
-            'required': 'Password is required.',
-            'blank': 'Password field may not be blank.',
+            'max_length': 'Country code must not exceed 5 characters.',
+            'required': 'Country code is required.',
+            'blank': 'Country code field may not be blank.',
+        }
+    )
+
+    otp_input = serializers.CharField(
+        max_length=6,
+        required=False,
+        validators=[RegexValidator(regex=r'^\d{6}$',
+                                   message='OTP must be a 6-digit number.')],
+        error_messages={
+            'max_length': 'OTP must not exceed 6 digits.',
+            'blank': 'OTP field may not be blank if provided.',
         }
     )
 
@@ -35,14 +46,19 @@ class UserLoginSerializer(serializers.Serializer):
         """
         Custom validation for the login data.
 
-        Ensures that both email and password are provided and follow the expected formats.
+        Ensures that both phone_no and country_code are provided,
+        and optionally validates OTP if it's part of the input.
         """
-        email = data.get('email')
-        password = data.get('password')
+        phone_no = data.get('phone_no')
+        country_code = data.get('country_code')
+        otp_input = data.get('otp_input')
 
-        if not email:
-            raise serializers.ValidationError({'email': 'Email is required.'})
-        if not password:
-            raise serializers.ValidationError({'password': 'Password is required.'})
+        if not phone_no:
+            raise serializers.ValidationError({'phone_no': 'Phone number is required.'})
+        if not country_code:
+            raise serializers.ValidationError({'country_code': 'Country code is required.'})
+
+        if otp_input and len(otp_input) != 6:
+            raise serializers.ValidationError({'otp_input': 'OTP must be exactly 6 digits.'})
 
         return data

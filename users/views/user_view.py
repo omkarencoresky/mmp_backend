@@ -1,9 +1,14 @@
+import smtplib
+
 from utils.utils import *
-from common_app.models import User
+from twilio.rest import Client
+from django.conf import settings
 from rest_framework.views import APIView
+from common_app.models import User, Role
 from authentication.authentication import OAuthBackend
 from users.serializer.login_serializer import UserLoginSerializer
 from users.serializer.register_serializer import UserRegistrationSerializer
+
 
 class Register(APIView):
     """
@@ -43,35 +48,43 @@ class Register(APIView):
             if serializer.is_valid():
                 
                 validated_data = serializer.validated_data
-                
                 profile_image = request.FILES.get('profile_url')
+                role_id = validated_data.get('role_id')
                 profile_url = None
-               
-                response = is_record_exists(
-                    username=validated_data['username'], 
-                    phone_no=validated_data['phone_no'],
-                    email=validated_data['email']
-                )
                 
+                response = is_record_exists(phone_no=validated_data['phone_no'],email=validated_data['email'])
                 if response:
                     return response
+                
+                role = Role.objects.get(id=role_id)
+
+                if not role:
+                    return create_response(
+                        success=False, 
+                        message="Role is required.", 
+                        status=400
+                    )
+                
+                validated_data['role_id'] = role
+                user = User.objects.create(**validated_data)
 
                 if profile_image:
-                    profile_url = save_image(profile_image,  validated_data.get('username'), 
-                                    validated_data.get('role'))
+                    profile_url = save_image(uploaded_image=profile_image, user_id=user.id, role=role.name)
+                
+                if profile_url:
+                    user.profile_url = profile_url
+                    user.save()
 
-                validated_data['profile_url'] = profile_url
-
-                User.objects.create(**validated_data)
                 return create_response(
                     success=True, 
                     message="User registered.", 
                     status=201
                 )
-            
+
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
+
                 return create_response(
                     success=False, 
                     message=error_message, 
@@ -98,70 +111,95 @@ class Login(APIView):
     """
 
     def post(self, request):
-        """
-        Handles POST requests to authenticate a user.
-
-        This method:
-        - Extracts the email and password from the request data.
-        - Validates that both fields are provided.
-        - Authenticates the user using the `OAuthBackend` authentication mechanism.
-        - Generates an access token if authentication is successful.
-
-        Args:
-            request (Request): The HTTP request object containing user login credentials (email and password).
-
-        Returns:
-            Response: A JSON response with a status code and message.
-            - On success (HTTP 200): success (bool), message (str), data (dict) with user ID, 
-                access token, token type, and expiration.
-            - On failure (HTTP 400/401): success (bool), message (str) with error details.
-            - On error (HTTP 500): success (bool), message (str) with a generic error message.
-        """
         try:
             serializer = UserLoginSerializer(data=request.data)
-            if serializer.is_valid():
+            
+            if serializer.is_valid(): 
 
                 form_data = request.POST
-                email = form_data.get('email')
-                password = form_data.get('password')
-                
-                authenticate_user = OAuthBackend.authenticate(email=email, password=password)
+                phone_no = form_data.get('phone_no')
+                country_code = form_data.get('country_code')
 
-                if authenticate_user is None:
+                if not is_phone_number_exist(phone_no, country_code):
                     return create_response(
-                        success=False, 
-                        message="Invalid email or password.", 
-                        status=401
+                        success=False,
+                        message=f'Phone number not exist', 
+                        status=400
                     )
+
+                if 'otp_input' in request.data:
+                    otp_input = form_data.get('otp_input')
+                    otp_verification, otp_message = verify_otp(phone_no, otp_input)
+
+                    if not otp_verification:
+                        return create_response(
+                            success=False, 
+                            message=otp_message, 
+                            status=500
+                        )
+
+                    authenticate_user = User.objects.get(phone_no=phone_no)
+
+                    if not authenticate_user:
+                        return create_response(
+                            success=False, 
+                            message="User not found.", 
+                            status=500
+                        )
                     
+                    access_token = generate_token(authenticate_user)
+                    
+                    if access_token is None:
+                        return create_response(
+                            success=False, 
+                            message="Something went wrong, Unable to generate token.", 
+                            status=500
+                        )
 
-                access_token = generate_token(authenticate_user)
+                    data = {
+                        "user_id": authenticate_user.id,
+                        "access_token": access_token.access_token,
+                        "token_type": access_token.token_type,
+                        "expires_in": access_token.expires_at.strftime('%Y-%m-%d %H:%M:%S')
+                    }
 
-                if access_token is None:
                     return create_response(
-                        success=False, 
-                        message="Something went wrong, Unable to generate token.", 
-                        status=500
+                        success=True, 
+                        message="User logged In.", 
+                        data=data, 
+                        status=200
                     )
 
-                data = {
-                    "user_id": authenticate_user.id,
-                    "access_token": access_token.access_token,
-                    "token_type": access_token.token_type,
-                    "expires_in": access_token.expires_at.strftime('%Y-%m-%d %H:%M:%S')
-                }
+                else:
 
-                return create_response(
-                    success=True, 
-                    message="User logged In.", 
-                    data=data, 
-                    status=200
-                )
-                                    
+                    otp = generate_otp(phone_no)
+
+                    if not otp:
+                        return create_response(
+                            success=False,
+                            message=f'Some thing went wrong to generate otp!', 
+                            status=500
+                        )
+                    
+                    send_otp_status = send_otp(country_code, phone_no, otp)
+
+                    if not send_otp_status:
+                        return create_response(
+                            success=False,
+                            message=f'Some thing went wrong in send otp!', 
+                            status=500
+                        )
+
+                    return create_response(
+                            success=True,
+                            message=f'OTP send', 
+                            status=200
+                        )
+                
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
-                
+
                 return create_response(
                     success=False, 
                     message=error_message, 
@@ -206,14 +244,14 @@ class UserManagement(APIView):
         """
         try:
             if user_id:
-                user = retrieve_user_details(id=user_id)
-
+                user = retrieve_user_details(user_id=user_id)
                 if user is None:
                     return create_response( 
                         success=False, 
                         message="User not found",
                         status=404
                     )
+                print('user', user)
                 return create_response( 
                         success=True, 
                         message="User details", 
@@ -222,14 +260,8 @@ class UserManagement(APIView):
                     )
                 
             else:
-                users = retrieve_user_details()
-                
-                # if users is None:
-                #     return create_response( 
-                #         success=False, 
-                #         message="Users not found.", 
-                #         status=400,
-                #     )
+                users = retrieve_user_details(user_id=None)
+                print('users', users)
                 
                 return create_response( 
                         success=True, 

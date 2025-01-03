@@ -1,9 +1,13 @@
 import os
+import redis
+import pyotp
 import secrets
 import datetime
 
 from functools import wraps
 from datetime import datetime
+from dotenv import load_dotenv
+from twilio.rest import Client
 from datetime import timedelta
 from django.conf import settings
 from django.http import JsonResponse
@@ -11,8 +15,13 @@ from django.http import JsonResponse
 from django.utils.text import slugify
 from common_app.models import OAuthAccessToken
 from common_app.models import User, User_Address
+from twilio.base.exceptions import TwilioRestException
 from common_app.models import OAuthAccessToken, OAuthApplication
 
+
+load_dotenv()
+
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 
 def create_response(success: bool = None, message: str = None, data: JsonResponse = None, 
                     status: int = None) -> JsonResponse:
@@ -32,7 +41,7 @@ def create_response(success: bool = None, message: str = None, data: JsonRespons
         "success": success,
         "message": message
     }
-    if not data:
+    if data:
         response_data["data"] = data
 
     return JsonResponse(
@@ -41,7 +50,7 @@ def create_response(success: bool = None, message: str = None, data: JsonRespons
     )
 
 
-def save_image(uploaded_image, username: str, role: str):
+def save_image(uploaded_image, user_id: str, role: str):
     """
     Saves the uploaded profile image to the server in a role-specific directory and 
         returns the URL of the saved image.
@@ -63,7 +72,7 @@ def save_image(uploaded_image, username: str, role: str):
         
         os.makedirs(folder_path, exist_ok=True)
 
-        filename = f"{slugify(username)}_image.{extension}"
+        filename = f"{user_id}_image.{extension}"
         file_path = os.path.join(folder_path, filename)
 
         with open(file_path, 'wb+') as f:
@@ -102,7 +111,7 @@ def is_email_exist(email):
     return User.objects.filter(email=email).exists()
 
 
-def is_phone_number_exist(phone_no):
+def is_phone_number_exist(phone_no, country_code=None):
     """
     Checks if a phone number exists in the User model.
 
@@ -112,6 +121,8 @@ def is_phone_number_exist(phone_no):
     Returns:
         bool: True if the phone number exists, False otherwise.
     """
+    if country_code:
+        return User.objects.filter(phone_no=phone_no, country_code=country_code).exists()
     return User.objects.filter(phone_no=phone_no).exists()
 
 
@@ -162,7 +173,7 @@ def is_record_exists(username=None, email=None, phone_no=None):
             )
 
     if phone_no:
-        phone_no = is_phone_number_exist(phone_no)
+        phone_no = is_phone_number_exist(phone_no=phone_no)
 
         if phone_no:
             return create_response(
@@ -230,7 +241,7 @@ def retrieve_user_details(user_id=None):
         bool: True if the user exists, False otherwise.
     """
     try:
-        if not user_id:
+        if user_id is not None:
             data = User.objects.filter(id=user_id).values(
                         'username', 'first_name', 'last_name', 'middle_name', 'email'
                         , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
@@ -238,10 +249,11 @@ def retrieve_user_details(user_id=None):
             return data
         
         else:
-            data =  User.objects.filter().values(
+            print('else', user_id)
+            data =  User.objects.values(
                         'username', 'first_name', 'last_name', 'middle_name', 'email'
                         , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
-                    ).all()
+                    )
             return list(data)
 
     except Exception as e:
@@ -302,6 +314,73 @@ def get_address_by_id(address_id):
 
 
 
+def generate_otp(phone_no):
+    """
+    Generate a OTP and store it in Redis.
+    
+    Args:
+    mobile_number (str): The mobile number of the user requesting the OTP.
+
+    Returns:
+    str: OTP
+    """
+    try:
+        otp = pyotp.TOTP(pyotp.random_base32()).now()
+        redis_key = f"otp:{phone_no}"
+        redis_client.setex(redis_key, 300, otp)
+        return otp
+    
+    except:
+        return None
+
+
+def verify_otp(user_id, otp_input):
+    """Verify the OTP input by the user."""
+    redis_key = f"otp:{user_id}"
+    stored_otp = redis_client.get(redis_key)
+    
+    if stored_otp is None:
+        return False, "OTP expired."
+    
+    if stored_otp == otp_input:
+        # OTP is valid
+        redis_client.delete(redis_key)
+        return True, "OTP verified successfully."
+    
+    return False, "Invalid OTP."
+
+
+
+def send_otp(country_code, phone_no, otp):
+    """
+    Generate a OTP and store it in Redis.
+    
+    Args:
+    mobile_number (str): The mobile number of the user requesting the OTP.
+
+    Returns:
+    str: OTP
+    """
+    try:
+        account_sid = os.getenv('TWILIO_SID')
+        auth_token = os.getenv('TWILIO_TOKEN')
+
+        client = Client(account_sid, auth_token)
+        client.messages.create(
+            to=f"{country_code}{phone_no}",
+            from_="+1 218 506 1882",
+            body=f"Your OTP for login is {otp}. It is valid for 5 minutes."
+        )
+        return otp
+    
+    except TwilioRestException as e:
+        print(e)
+
+    except:
+        return None
+
+
+
 # def token_required(view_func):
 #     """
 #     Decorator to validate the access token from the Authorization header.
@@ -342,5 +421,4 @@ def get_address_by_id(address_id):
 #             }, status=401)
         
 #         return view_func(request, args, *kwargs)
-    
 #     return wrapper

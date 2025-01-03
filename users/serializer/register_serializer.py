@@ -1,20 +1,21 @@
+from common_app.models import Role
 from rest_framework import serializers
 from utils.utils import create_response
 from django.core.validators import RegexValidator
 
 class UserRegistrationSerializer(serializers.Serializer):
-    username = serializers.CharField(
-        min_length=3, 
-        max_length=100,
-        validators=[RegexValidator(regex=r'^[a-zA-Z0-9_]+$', 
-                    message="Username can only contain letters, numbers, and underscores.")],
-        error_messages={
-            'required': 'Username is required.',
-            'blank': 'username field may not be blank',
-            'max_length': 'Username must not exceed 100 characters.',
-            'min_length': 'Username must be at least 3 characters long.',
-        }
-    )
+    # username = serializers.CharField(
+    #     min_length=3, 
+    #     max_length=100,
+    #     validators=[RegexValidator(regex=r'^[a-zA-Z0-9_]+$', 
+    #                 message="Username can only contain letters, numbers, and underscores.")],
+    #     error_messages={
+    #         'required': 'Username is required.',
+    #         'blank': 'username field may not be blank',
+    #         'max_length': 'Username must not exceed 100 characters.',
+    #         'min_length': 'Username must be at least 3 characters long.',
+    #     }
+    # )
     
     first_name = serializers.CharField(
         min_length=3, 
@@ -107,12 +108,19 @@ class UserRegistrationSerializer(serializers.Serializer):
         }
     )
     
-    role = serializers.ChoiceField(
-        choices=["user", "driver", "travel_admin", "package_admin", "travel_sub_admin", "package_sub_admin"],
-        default="user",
+    role_id = serializers.UUIDField(
         error_messages={
-            'invalid_choice': 'Role must be one of the following: user, driver, travel_admin, package_admin, travel_sub_admin, package_sub_admin.',
             'required': 'Role is required.',
+            'invalid': 'Role must be a valid UUID.',
+            'blank': 'password field may not be blank',
+        }
+    )
+    country_code = serializers.CharField(
+        max_length=10, 
+        error_messages={
+            'required': 'Country code is required.',
+            'max_length': 'Country code must not exceed 10 characters.',
+            'blank': 'Country code field may not be blank',
         }
     )
 
