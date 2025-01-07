@@ -15,7 +15,7 @@ from django.http import JsonResponse
 from django.http import JsonResponse
 from django.utils.text import slugify
 from common_app.models import OAuthAccessToken
-from common_app.models import User, User_Address
+from common_app.models import User, User_Address, Role
 from twilio.base.exceptions import TwilioRestException
 from common_app.models import OAuthAccessToken, OAuthApplication
 
@@ -50,7 +50,7 @@ def create_response(success: bool = None, message: str = None, data: JsonRespons
         status=status
     )
 
-#InMemoryUploadedFile
+
 def save_image(uploaded_image, user_id: uuid.UUID, role: str):
     """
     Saves the uploaded profile image to the server in a role-specific directory and 
@@ -84,6 +84,60 @@ def save_image(uploaded_image, user_id: uuid.UUID, role: str):
     
     except Exception:
         return None
+    
+
+def create_user(validated_data, profile_image=None, creator_id=None):
+    """
+    Handles user creation with validation, role assignment, and optional profile image processing.
+
+    Args:
+        validated_data (dict): The validated data for creating the user, including phone_no, email, and role_id.
+        profile_image (InMemoryUploadedFile, optional): The uploaded profile image file for the user. Defaults to None.
+
+    Returns:
+        Response: A JSON response with a status code and message.
+        - HTTP 201: User successfully created.
+        - HTTP 409: Duplicate username, email, or phone number.
+        - HTTP 500: Internal server error.
+    """
+    try:
+        response = is_record_exists(
+            phone_no=validated_data['phone_no'],
+            email=validated_data['email']
+        )
+        if response:
+            return response
+
+        role_id = validated_data.get('role_id')
+        role = Role.objects.get(id=role_id)
+        validated_data['role_id'] = role
+        validated_data['created_by'] = get_user_by_id(user_id=creator_id)
+
+        user = User.objects.create(**validated_data)
+
+        if profile_image:
+            profile_url = save_image(
+                uploaded_image=profile_image,
+                user_id=user.id,
+                role=role.name
+            )
+
+            if profile_url:
+                user.profile_url = profile_url
+                user.save()
+
+        return create_response(
+            success=True,
+            message="Register successfully.",
+            status=201
+        )
+    
+    except Exception as e:
+        return create_response(
+            success=False,
+            message="Something went wrong.",
+            status=500
+        )
 
 
 # def is_username_exist(username: str):
@@ -153,15 +207,15 @@ def is_record_exists(username: str = None, email: str = None, phone_no: str = No
         JsonResponse: A JsonResponse indicating if any record exists, or None if record in not exists.
     """
     
-    if username:
-        username = is_username_exist(username)
+    # if username:
+    #     username = is_username_exist(username)
 
-        if username:
-            return create_response(
-                success=False, 
-                message="User with this username already exists", 
-                status=400
-            )
+    #     if username:
+    #         return create_response(
+    #             success=False, 
+    #             message="User with this username already exists", 
+    #             status=400
+    #         )
     
     if email:
         email = is_email_exist(email)
@@ -398,6 +452,20 @@ def send_otp(country_code: str, phone_no: str, otp: str):
     
 
 def update_record(object, data: dict):
+    """
+    Updates the attributes of a given object using a dictionary of key-value pairs.
+
+    Parameters:
+        object: Any
+            The object whose attributes are to be updated.
+        data (dict): A dictionary where the keys are the attribute names (as strings) 
+                     and the values are the new values to assign to those attributes.
+
+    Returns:
+        bool: 
+            - `True` if all attributes were successfully updated.
+            - `False` if an exception occurs during the update process.
+    """
     try:
         for field, value in data.items():
                 setattr(object, field, value)

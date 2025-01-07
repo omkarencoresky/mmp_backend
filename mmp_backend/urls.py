@@ -22,4 +22,7 @@ urlpatterns = [
     path('', include('users.routes.user_endpoints')),
     path('user/', include('users.routes.address_endpoints')),
     path('company/', include('users.routes.company_endpoints')),
+    path('driver/', include('driver.routes.driver_endpoints')),
+    path('travel/agency/', include('travel_agency.routes.travel_agency_endpoints')),
+    path('package/provider/', include('package_provider.routes.package_provider_endpoints')),
 ]

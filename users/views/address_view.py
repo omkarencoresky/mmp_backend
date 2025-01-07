@@ -4,7 +4,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from common_app.models import User, User_Address
 from users.serializer.address_serializer import AddressSerializer
-from utils.utils import create_response, is_user_id_exist, fetch_address_details, get_address_by_id, update_record
+from utils.utils import (create_response, is_user_id_exist, 
+                         fetch_address_details, get_address_by_id, 
+                         update_record)
 
 class Addresses(APIView):
     """
@@ -17,8 +19,10 @@ class Addresses(APIView):
     smooth user experience when managing address.
 
     """
-
-    def get(self, request: Request, address_id: uuid.UUID=None, user_id: uuid.UUID=None) -> Response:
+    def get(self, request: Request,
+            user_id: uuid.UUID=None,
+            address_id: uuid.UUID=None,
+        ) -> Response:
         """
         Handles GET requests to retrieve address information.
 
@@ -90,7 +94,8 @@ class Addresses(APIView):
         - Creates a new address entry in the database if all validation checks pass.
 
         Args:
-            request (Request): The HTTP request object containing address data (e.g., city, state, pin_code).
+            request (Request): The HTTP request object containing address data (e.g., 
+                city, state, pin_code).
             user_id (uuid.UUID): The ID of the user to associate the address with.
 
         Returns:
@@ -201,7 +206,8 @@ class Addresses(APIView):
         - Only updates the fields that are provided in the request using `partial=True`.
 
         Args:
-            request (Request): The HTTP request object containing address data, which can include any combination of the address fields to update.
+            request (Request): The HTTP request object containing address data, which 
+            can include any combination of the address fields to update.
             address_id (uuid.UUID): The ID of the address to be updated.
 
         Returns:

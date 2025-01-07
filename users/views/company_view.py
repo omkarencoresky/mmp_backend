@@ -19,7 +19,10 @@ class CompanyManagement(APIView):
     records.
     """
 
-    def get(self, request: Request, company_id: uuid.UUID=None, user_id: uuid.UUID=None) -> Response:
+    def get(self, request: Request, 
+            user_id: uuid.UUID=None,
+            company_id: uuid.UUID=None, 
+        ) -> Response:
         """
         Handles GET requests to fetch company details.
 
@@ -262,3 +265,4 @@ class CompanyManagement(APIView):
                 message='Something went wrong', 
                 status=500
             )
+        

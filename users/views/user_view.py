@@ -49,30 +49,10 @@ class Register(APIView):
                 
                 validated_data = serializer.validated_data
                 profile_image = request.FILES.get('profile_url')
-                role_id = validated_data.get('role_id')
-                profile_url = None
-                
-                response = is_record_exists(phone_no=validated_data['phone_no'],email=validated_data['email'])
-                if response:
-                    return response
-                
-                role = Role.objects.get(id=role_id)            
-                validated_data['role_id'] = role
-                
-                user = User.objects.create(**validated_data)
 
-                if profile_image:
-                    profile_url = save_image(uploaded_image=profile_image, user_id=user.id, role=role.name)
-                
-                if profile_url:
-                    user.profile_url = profile_url
-                    user.save()
-
-                return create_response(
-                    success=True, 
-                    message="User registered.", 
-                    status=201
-                )
+                return create_user(validated_data=validated_data, 
+                        profile_image=profile_image
+                    )
 
             else:
                 _, error_details = next(iter(serializer.errors.items()))
