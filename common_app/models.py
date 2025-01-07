@@ -78,13 +78,19 @@ class User(models.Model):
 
 
 class User_Address(models.Model):
-    id = models.AutoField(primary_key=True)
-    user_id =models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_id')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    house_no = models.CharField(max_length=20, blank=True, null=True)
+    apartment = models.CharField(max_length=50, blank=True, null=True)
+    nearest_landmark = models.CharField(max_length=100, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
-    pin_code = models.CharField(max_length=20, blank=True, null=True)
     street_address = models.CharField(max_length=200, blank=True, null=True)
+    pin_code = models.CharField(max_length=20, blank=True, null=True)
+    postal_code = models.CharField(max_length=100, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -116,3 +122,56 @@ class OAuthAccessToken(models.Model):
 
     class Meta:
         db_table = 'oauth_access_token'
+
+
+class Driver(models.Model):
+    LICENSE_TYPE_CHOICES = [
+        ('two_wheeler', 'Two-Wheeler'),
+        ('commercial', 'Commercial'),
+        ('heavy_vehicle', 'Heavy Vehicle'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='driver_user_id')
+    experience_years = models.FloatField()
+    hire_date = models.DateField(auto_now_add=True)
+    license_number = models.CharField(max_length=50, unique=True)
+    license_type = models.CharField(max_length=20, choices=LICENSE_TYPE_CHOICES, null=True)
+    license_issue_date = models.DateField(null=True, blank=True)
+    license_expiration_date = models.DateField(null=True, blank=True)
+    emergency_contact_name = models.CharField(max_length=255)
+    emergency_contact_no = models.CharField(max_length=15)
+    is_deleted = models.BooleanField(default=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'driver'
+
+
+class Company(models.Model):
+    COMPANY_STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='company_user_id')
+    company_name = models.CharField(max_length=255)
+    company_email = models.EmailField(max_length=255)
+    registration_number = models.CharField(max_length=50, unique=True)
+    contact_number = models.CharField(max_length=20, null=True, blank=True)
+    foundation_date = models.DateField(null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=True, blank=True)
+    country = models.CharField(max_length=100, null=True, blank=True)
+    street_address = models.CharField(max_length=200, null=True, blank=True)
+    pin_code = models.CharField(max_length=20, null=True, blank=True)
+    postal_code = models.CharField(max_length=100, null=True, blank=True)
+    company_status = models.CharField(max_length=10, choices=COMPANY_STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'companies'

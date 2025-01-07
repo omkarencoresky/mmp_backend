@@ -1,11 +1,10 @@
-import smtplib
+import uuid
 
 from utils.utils import *
-from twilio.rest import Client
-from django.conf import settings
 from rest_framework.views import APIView
 from common_app.models import User, Role
-from authentication.authentication import OAuthBackend
+from rest_framework.request import Request
+from rest_framework.response import Response
 from users.serializer.login_serializer import UserLoginSerializer
 from users.serializer.register_serializer import UserRegistrationSerializer
 
@@ -13,7 +12,7 @@ from users.serializer.register_serializer import UserRegistrationSerializer
 class Register(APIView):
     """
     A view that handles the registration of a new user.
-
+    
     This view processes a POST request where user registration details are provided.
     It validates the data, checks for existing records (username, email, phone), 
     and optionally handles profile image uploads. If validation passes, it creates 
@@ -21,27 +20,28 @@ class Register(APIView):
 
     """
     
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         """
-        Handles POST requests to register a new user.
+        Handles POST requests for user registration.
 
         This method:
-        - Validates the incoming registration data using the `UserRegistrationSerializer`.
-        - Checks if the provided username, email, or phone number already exists in the database.
-        - Optionally processes and saves a profile image.
-        - Creates a new user if all validation checks pass.
+        - Validates the provided user registration data using the `UserRegistrationSerializer`.
+        - Checks for duplicate entries of username, email, or phone number.
+        - Processes and optionally saves a profile image for the user.
+        - Creates a new user record in the database upon successful validation.
 
         Args:
-            request (Request): The HTTP request object containing user registration data, including username, 
-            email, phone, and optional profile image.
+            request (Request): The HTTP request object containing user registration details, 
+            including username, email, phone, role_id, and optional profile image.
 
         Returns:
-            Response: A response with a status code and message indicating success or failure.
+            Response: A JSON response with a status code and message.
             - HTTP 201: User registered successfully.
             - HTTP 400: Validation errors.
-            - HTTP 409: Duplicate username, email, or phone.
-            - HTTP 500: Unexpected error.
+            - HTTP 409: Duplicate username, email, or phone number.
+            - HTTP 500: Unexpected error during registration.
         """
+
         try:
             serializer = UserRegistrationSerializer(data=request.data)
 
@@ -56,16 +56,9 @@ class Register(APIView):
                 if response:
                     return response
                 
-                role = Role.objects.get(id=role_id)
-
-                if not role:
-                    return create_response(
-                        success=False, 
-                        message="Role is required.", 
-                        status=400
-                    )
-                
+                role = Role.objects.get(id=role_id)            
                 validated_data['role_id'] = role
+                
                 user = User.objects.create(**validated_data)
 
                 if profile_image:
@@ -97,8 +90,8 @@ class Register(APIView):
                 message='Something went wrong', 
                 status=500
             )
-
-
+        
+    
 
 class Login(APIView):
     """
@@ -110,7 +103,28 @@ class Login(APIView):
 
     """
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
+        """
+        Handles POST requests for user login and authentication.
+
+        This method:
+        - Validates the provided login data using the `UserLoginSerializer`.
+        - Verifies the existence of the provided phone number and country code.
+        - Handles OTP-based login:
+        - If `otp_input` is provided, verifies the OTP and authenticates the user.
+        - If `otp_input` is not provided, generates and sends a new OTP to the user.
+        - If authentication is successful, generates and returns an access token for the user.
+
+        Args:
+            request (Request): The HTTP request object containing login details such as phone_no, 
+            country_code, and optional otp_input.
+
+        Returns:
+            Response: A JSON response with a status code and message.
+            - HTTP 200: Successful login or OTP sent.
+            - HTTP 400: Invalid or missing phone number.
+            - HTTP 500: Unexpected error during login or OTP generation.
+        """
         try:
             serializer = UserLoginSerializer(data=request.data)
             
@@ -177,7 +191,7 @@ class Login(APIView):
                     if not otp:
                         return create_response(
                             success=False,
-                            message=f'Some thing went wrong to generate otp!', 
+                            message=f'Some thing went wrong!', 
                             status=500
                         )
                     
@@ -186,7 +200,7 @@ class Login(APIView):
                     if not send_otp_status:
                         return create_response(
                             success=False,
-                            message=f'Some thing went wrong in send otp!', 
+                            message=f'Something went wrong!', 
                             status=500
                         )
 
@@ -218,40 +232,41 @@ class UserManagement(APIView):
     """
     A view that handles CRUD operations for User objects.
 
-    This view provides methods to:
-    - Retrieve a single user or a list of all users.
-    - Update an existing user's information.
-    - Delete a user.
+    This view allows retrieving, updating, and deleting user information. It supports fetching
+    a single user or a list of users, and includes error handling for meaningful responses 
+    in case of issues.
 
     Each method includes error handling to provide meaningful responses in case of issues.
     """
-    def get(self, request, user_id=None):
+    def get(self, request: Request, user_id: uuid.UUID=None) -> Response:
         """
         Handles GET requests to retrieve user information.
 
         This method:
-        - If `user_id` is provided, retrieves the specific user with that ID.
+        - If `user_id` is provided, retrieves the details of the specified user.
         - If `user_id` is not provided, retrieves a list of all users.
 
         Args:
             request (Request): The HTTP request object.
-            user_id (int, optional): The ID of the user to retrieve.
+            user_id (int, optional): The ID of the user to retrieve. Defaults to None.
 
         Returns:
             Response: A JSON response with a status code and message.
-            - On success (HTTP 200): success (bool), message (str), data (list).
-            - On failure (HTTP 500): success (bool), message (str) with a generic error message.
+            - HTTP 200: User details or list of all users retrieved successfully.
+            - HTTP 404: User with the specified ID not found.
+            - HTTP 500: Unexpected error during retrieval.
         """
+
         try:
             if user_id:
                 user = retrieve_user_details(user_id=user_id)
+                
                 if user is None:
                     return create_response( 
                         success=False, 
                         message="User not found",
                         status=404
                     )
-                print('user', user)
                 return create_response( 
                         success=True, 
                         message="User details", 
@@ -261,7 +276,6 @@ class UserManagement(APIView):
                 
             else:
                 users = retrieve_user_details(user_id=None)
-                print('users', users)
                 
                 return create_response( 
                         success=True, 
@@ -277,25 +291,27 @@ class UserManagement(APIView):
                 status=500
             )
             
-    def put(self, request, user_id):
+    def put(self, request: Request, user_id: uuid.UUID) -> Response:
         """
         Handles PUT requests to update user information.
 
         This method:
         - Checks if the user with the given `user_id` exists.
-        - Validates the request data against the UserRegistrationSerializer.
-        - Updates the user fields if the validation passes.
+        - Validates the provided update data using the `UserRegistrationSerializer`.
+        - Updates the user fields in the database if validation passes.
 
         Args:
-            request (Request): The HTTP request object containing user update data.
+            request (Request): The HTTP request object containing user update details.
             user_id (int): The ID of the user to update.
 
         Returns:
             Response: A JSON response with a status code and message.
-            - On success (HTTP 200): success (bool), message (str).
-            - On validation failure (HTTP 400): success (bool), message (str) with validation errors.
-            - On failure (HTTP 500): success (bool), message (str) with a generic error message.
+            - HTTP 200: User updated successfully.
+            - HTTP 400: Validation errors in the provided data.
+            - HTTP 404: User with the specified ID not found.
+            - HTTP 500: Unexpected error during update.
         """
+
         try:
             user = get_user_by_id(user_id=user_id)
             
@@ -311,16 +327,23 @@ class UserManagement(APIView):
             if serializer.is_valid():
                 form_data = serializer.validated_data
                 
-                for field, value in form_data.items():
-                    setattr(user, field, value)
+                user_update = update_record(user, form_data)
+
+                if not user_update:
                     
+                    return create_response(
+                    success=False, 
+                    message='Something went wrong', 
+                    status=500
+                )
+
                 user.save()
                 return create_response(
                     success=True, 
                     message='User updated!',
                     status=200,
                 )
-                
+                                    
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
@@ -338,13 +361,13 @@ class UserManagement(APIView):
             )
             
             
-    def delete(self, request, user_id):
+    def delete(self, request: Request, user_id: uuid.UUID) -> Response:
         """
         Handles DELETE requests to remove a user.
 
         This method:
         - Checks if the user with the given `user_id` exists.
-        - Deletes the user if found.
+        - Deletes the user record from the database if found.
 
         Args:
             request (Request): The HTTP request object.
@@ -352,10 +375,11 @@ class UserManagement(APIView):
 
         Returns:
             Response: A JSON response with a status code and message.
-            - On success (HTTP 200): success (bool), message (str).
-            - On failure (HTTP 404): success (bool), message (str) indicating user not found.
-            - On error (HTTP 500): success (bool), message (str) with a generic error message.
+            - HTTP 200: User deleted successfully.
+            - HTTP 404: User with the specified ID not found.
+            - HTTP 500: Unexpected error during deletion.
         """
+
         try:
             user =  get_user_by_id(user_id=user_id)
 

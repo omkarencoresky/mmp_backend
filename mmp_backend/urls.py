@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('users.routes.user_endpoints')),
     path('user/', include('users.routes.address_endpoints')),
+    path('company/', include('users.routes.company_endpoints')),
 ]

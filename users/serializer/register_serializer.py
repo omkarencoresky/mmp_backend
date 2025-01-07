@@ -4,18 +4,6 @@ from utils.utils import create_response
 from django.core.validators import RegexValidator
 
 class UserRegistrationSerializer(serializers.Serializer):
-    # username = serializers.CharField(
-    #     min_length=3, 
-    #     max_length=100,
-    #     validators=[RegexValidator(regex=r'^[a-zA-Z0-9_]+$', 
-    #                 message="Username can only contain letters, numbers, and underscores.")],
-    #     error_messages={
-    #         'required': 'Username is required.',
-    #         'blank': 'username field may not be blank',
-    #         'max_length': 'Username must not exceed 100 characters.',
-    #         'min_length': 'Username must be at least 3 characters long.',
-    #     }
-    # )
     
     first_name = serializers.CharField(
         min_length=3, 
@@ -123,6 +111,16 @@ class UserRegistrationSerializer(serializers.Serializer):
             'blank': 'Country code field may not be blank',
         }
     )
+
+    def validate_role_id(self, value):
+        """
+        Custom validation for role_id to check if the role exists.
+        """
+        try:
+            role = Role.objects.get(id=value)
+        except Role.DoesNotExist:
+            raise serializers.ValidationError("Role with this ID does not exist.")
+        return value
 
     def validate(self, data):
         errors = {}

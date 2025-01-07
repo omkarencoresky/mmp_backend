@@ -1,4 +1,5 @@
 import os
+import uuid
 import redis
 import pyotp
 import secrets
@@ -49,8 +50,8 @@ def create_response(success: bool = None, message: str = None, data: JsonRespons
         status=status
     )
 
-
-def save_image(uploaded_image, user_id: str, role: str):
+#InMemoryUploadedFile
+def save_image(uploaded_image, user_id: uuid.UUID, role: str):
     """
     Saves the uploaded profile image to the server in a role-specific directory and 
         returns the URL of the saved image.
@@ -85,20 +86,20 @@ def save_image(uploaded_image, user_id: str, role: str):
         return None
 
 
-def is_username_exist(username):
-    """
-    Checks if a username exists in the User model.
+# def is_username_exist(username: str):
+#     """
+#     Checks if a username exists in the User model.
 
-    Args:
-        username (str): The username to check for existence.
+#     Args:
+#         username (str): The username to check for existence.
 
-    Returns:
-        bool: True if the username exists, False otherwise.
-    """
-    return User.objects.filter(username=username).exists()
+#     Returns:
+#         bool: True if the username exists, False otherwise.
+#     """
+#     return User.objects.filter(username=username).exists()
 
 
-def is_email_exist(email):
+def is_email_exist(email: str):
     """
     Checks if an email address exists in the User model.
 
@@ -111,7 +112,7 @@ def is_email_exist(email):
     return User.objects.filter(email=email).exists()
 
 
-def is_phone_number_exist(phone_no, country_code=None):
+def is_phone_number_exist(phone_no: str, country_code: str=None):
     """
     Checks if a phone number exists in the User model.
 
@@ -126,7 +127,7 @@ def is_phone_number_exist(phone_no, country_code=None):
     return User.objects.filter(phone_no=phone_no).exists()
 
 
-def is_user_id_exist(user_id):
+def is_user_id_exist(user_id: uuid.UUID):
     """
     Checks if a user with the specified ID exists in the User model.
 
@@ -139,7 +140,7 @@ def is_user_id_exist(user_id):
     return User.objects.filter(id=user_id).exists()
 
 
-def is_record_exists(username=None, email=None, phone_no=None):
+def is_record_exists(username: str = None, email: str = None, phone_no: str = None):
     """
     Checks if any of the given records (username, email, or phone number) exist in the database.
     
@@ -230,7 +231,7 @@ def generate_token(user):
     
 
 
-def retrieve_user_details(user_id=None):
+def retrieve_user_details(user_id: uuid.UUID = None):
     """
     Checks if a user with the specified ID exists in the User model.
 
@@ -243,16 +244,15 @@ def retrieve_user_details(user_id=None):
     try:
         if user_id is not None:
             data = User.objects.filter(id=user_id).values(
-                        'username', 'first_name', 'last_name', 'middle_name', 'email'
-                        , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
+                        'first_name', 'last_name', 'middle_name', 'email'
+                        , 'phone_no', 'gender', 'date_of_birth', 'is_active', 'last_login'
                     ).first()
             return data
         
         else:
-            print('else', user_id)
             data =  User.objects.values(
-                        'username', 'first_name', 'last_name', 'middle_name', 'email'
-                        , 'phone_no', 'gender', 'date_of_birth', 'role', 'is_active', 'last_login'
+                        'first_name', 'last_name', 'middle_name', 'email'
+                        , 'phone_no', 'gender', 'date_of_birth', 'is_active', 'last_login'
                     )
             return list(data)
 
@@ -260,7 +260,7 @@ def retrieve_user_details(user_id=None):
         return None
     
 
-def fetch_address_details(user_id=None, address_id=None):
+def fetch_address_details(user_id: uuid.UUID = None, address_id: uuid.UUID = None):
     """
     Checks if a user with the specified ID exists in the User model.
 
@@ -271,15 +271,17 @@ def fetch_address_details(user_id=None, address_id=None):
         bool: True if the user exists, False otherwise.
     """
     try:
-        if not address_id:
+        if address_id:
             data = User_Address.objects.filter(id=address_id).values(
-                    'id', 'user_id', 'street_address', 'city', 'state', 'pin_code', 'country'
+                    'id', 'user_id', 'house_no', 'apartment', 'nearest_landmark', 'pin_code', 'user_id', 
+                    'street_address', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
                 ).first()
             return data
         
-        if not user_id:
+        if user_id:
             data =  User_Address.objects.filter(user_id=user_id).values(
-                    'id', 'user_id', 'street_address', 'city', 'state', 'pin_code', 'country'
+                    'id', 'user_id', 'house_no', 'apartment', 'nearest_landmark', 'pin_code', 'user_id', 
+                    'street_address', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
                 ).all()
             return list(data)
 
@@ -287,7 +289,7 @@ def fetch_address_details(user_id=None, address_id=None):
         return None
     
 
-def get_user_by_id(user_id):
+def get_user_by_id(user_id: uuid.UUID):
     """
     Checks if a user with the specified ID exists in the User model.
 
@@ -300,7 +302,7 @@ def get_user_by_id(user_id):
     return User.objects.filter(id=user_id).first()
 
 
-def get_address_by_id(address_id):
+def get_address_by_id(address_id: uuid.UUID):
     """
     Checks if a address with the specified ID exists in the User model.
 
@@ -314,7 +316,7 @@ def get_address_by_id(address_id):
 
 
 
-def generate_otp(phone_no):
+def generate_otp(phone_no: str):
     """
     Generate a OTP and store it in Redis.
     
@@ -334,8 +336,23 @@ def generate_otp(phone_no):
         return None
 
 
-def verify_otp(user_id, otp_input):
-    """Verify the OTP input by the user."""
+def verify_otp(user_id: uuid.UUID, otp_input: str):
+    """
+    Verifies the OTP provided by the user.
+
+    This method:
+    - Retrieves and checks the stored OTP from Redis.
+    - Deletes the OTP if verified.
+
+    Args:
+        user_id (uuid.UUID): The user's unique ID.
+        otp_input (str): The OTP entered by the user.
+
+    Returns:
+        tuple: 
+            - (bool): True if valid, False if invalid or expired.
+            - (str): Message indicating the result (e.g., success or error).
+    """
     redis_key = f"otp:{user_id}"
     stored_otp = redis_client.get(redis_key)
     
@@ -351,7 +368,7 @@ def verify_otp(user_id, otp_input):
 
 
 
-def send_otp(country_code, phone_no, otp):
+def send_otp(country_code: str, phone_no: str, otp: str):
     """
     Generate a OTP and store it in Redis.
     
@@ -378,7 +395,16 @@ def send_otp(country_code, phone_no, otp):
 
     except:
         return None
+    
 
+def update_record(object, data: dict):
+    try:
+        for field, value in data.items():
+                setattr(object, field, value)
+        return True
+
+    except:
+        return False
 
 
 # def token_required(view_func):
