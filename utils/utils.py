@@ -10,12 +10,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from twilio.rest import Client
 from datetime import timedelta
+from common_app.models import *
 from django.conf import settings
 from django.http import JsonResponse
 from django.http import JsonResponse
-from django.utils.text import slugify
-from common_app.models import OAuthAccessToken
-from common_app.models import User, User_Address, Role
 from twilio.base.exceptions import TwilioRestException
 from common_app.models import OAuthAccessToken, OAuthApplication
 
@@ -470,6 +468,69 @@ def update_record(object, data: dict):
         for field, value in data.items():
                 setattr(object, field, value)
         return True
+
+    except:
+        return False
+    
+
+def check_permissions(user, permission_type:str):
+    """
+    Check if a user has the required permission for a specific action.
+
+    This function checks the permissions associated with the user's role 
+    to determine if the user is allowed to perform the specified action.
+
+    Args:
+        user (User): The user object for which the permission is being checked.
+        permission_type (str): The type of permission required (e.g., 'read', 'write', 'update', 'delete').
+
+    Returns:
+        Response:
+            - A `Response` object with an error message and status 404 if the permission is denied.
+        bool:
+            - `False` if an exception occurs during the process.
+            - If permission is allowed, the function implicitly returns `None`.
+    """
+        
+    try:
+
+        role_permission = Permission.objects.filter(role_id= user.role_id).first()
+        
+        if permission_type not in role_permission.permission.split(','):
+            return create_response(
+                success=False,
+                message='Permission denied!',
+                status=404
+            )
+        
+    except:
+        return False
+    
+
+def validate_package_provider_roles(user):
+    """
+    Validates the role of a user to ensure they are either a 'package_admin' or 'package_sub_admin'.
+    
+    This function checks the role of the provided user and returns a response indicating
+    whether the user's role is valid or not. If the user's role is not one of the allowed roles 
+    ('package_admin' or 'package_sub_admin'), the function returns a response with an error message.
+    
+    Args:
+        user (User): A user object that contains the user's role information.
+    
+    Returns:
+        dict or bool: A response dictionary containing the success status, message, and HTTP status
+        code if the validation fails, or False if an error occurs during validation.
+    """
+    
+    try:
+
+        if user.role_id.name not in ['package_admin', 'package_sub_admin']:
+            return create_response(
+                success=False,
+                message='Invalid role.',
+                status=404
+            )
 
     except:
         return False
