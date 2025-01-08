@@ -21,6 +21,32 @@ class Role(models.Model):
         db_table = 'roles'
 
 
+class Permission(models.Model):
+    PERMISSION_CHOICES = ['read', 'write', 'delete', 'update', 'all']
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
+    permission = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    def save(self, *args, **kwargs):
+        """
+        Ensure permissions are valid before saving.
+        """
+        permissions_list = self.permission.split(',')
+        invalid_permissions = [
+            perm for perm in permissions_list if perm.strip() not in self.PERMISSION_CHOICES
+        ]
+        if invalid_permissions:
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
+        self.permission = ','.join([perm.strip() for perm in permissions_list])
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'permission'
+
 
 class User(models.Model):
 

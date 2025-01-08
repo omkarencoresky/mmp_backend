@@ -3,8 +3,8 @@ from common_app.models import User
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from utils.utils import create_response, create_user
 from users.serializer.register_serializer import UserRegistrationSerializer 
+from utils.utils import create_response, create_user, validate_package_provider_roles
 
 class PackageProvider(APIView):
     """
@@ -39,10 +39,15 @@ class PackageProvider(APIView):
         try:
             creator = User.objects.filter(id=creator_id).first()
 
-            if not creator or creator.role_id.name != 'package_admin':
+            validate_role = validate_package_provider_roles(creator)
+
+            if validate_role:
+                return validate_role
+
+            if not creator:
                 return create_response(
                     success=False,  
-                    message='Creator not found or in-valid Creator role.',
+                    message='Creator not found.',
                     status=404
                 )
             

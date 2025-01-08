@@ -24,5 +24,6 @@ urlpatterns = [
     path('company/', include('users.routes.company_endpoints')),
     path('driver/', include('driver.routes.driver_endpoints')),
     path('travel/agency/', include('travel_agency.routes.travel_agency_endpoints')),
-    path('package/provider/', include('package_provider.routes.package_provider_endpoints')),
+    path('api/package/provider/', include('package_provider.routes.package_provider_endpoints')),
+    path('api/tour/package/', include('package_provider.routes.tour_package_endpoints')),
 ]

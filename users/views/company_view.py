@@ -84,7 +84,6 @@ class CompanyManagement(APIView):
                 status=500
             )
         
-
     def post(self, request: Request, user_id:uuid.UUID) -> Response:
         """
         Handles POST requests to create a new company.
