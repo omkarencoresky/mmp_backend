@@ -1,8 +1,8 @@
 import uuid
 
 from utils.utils import *
+from common_app.models import User
 from rest_framework.views import APIView
-from common_app.models import User, Role
 from rest_framework.request import Request
 from rest_framework.response import Response
 from users.serializer.login_serializer import UserLoginSerializer
@@ -137,8 +137,8 @@ class Login(APIView):
                     if not authenticate_user:
                         return create_response(
                             success=False, 
-                            message="User not found.", 
-                            status=500
+                            message="In-valid Phone number.", 
+                            status=404
                         )
                     
                     access_token = generate_token(authenticate_user)
@@ -159,7 +159,7 @@ class Login(APIView):
 
                     return create_response(
                         success=True, 
-                        message="User logged In.", 
+                        message="User login successfully.", 
                         data=data, 
                         status=200
                     )

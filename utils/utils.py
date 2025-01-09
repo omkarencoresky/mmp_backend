@@ -500,14 +500,14 @@ def check_permissions(user, permission_type:str):
             return create_response(
                 success=False,
                 message='Permission denied!',
-                status=404
+                status=403
             )
         
     except:
         return False
     
 
-def validate_package_provider_roles(user):
+def validate_package_provider_roles(user, role_list: list=None):
     """
     Validates the role of a user to ensure they are either a 'package_admin' or 'package_sub_admin'.
     
@@ -525,11 +525,47 @@ def validate_package_provider_roles(user):
     
     try:
 
-        if user.role_id.name not in ['package_admin', 'package_sub_admin']:
+        if role_list is None:
+            role_list = ['package_admin', 'package_sub_admin']
+        
+        if user.role_id.name not in role_list:
             return create_response(
                 success=False,
                 message='Invalid role.',
-                status=404
+                status=401
+            )
+
+    except:
+        return False
+    
+
+
+def validate_travel_agency_roles(user, role_list: list=None):
+    """
+    Validates the role of a user to ensure they are either a 'travel_admin' or 'travel_sub_admin'.
+    
+    This function checks the role of the provided user and returns a response indicating
+    whether the user's role is valid or not. If the user's role is not one of the allowed roles 
+    ('travel_admin' or 'travel_sub_admin'), the function returns a response with an error message.
+    
+    Args:
+        user (User): A user object that contains the user's role information.
+    
+    Returns:
+        dict or bool: A response dictionary containing the success status, message, and HTTP status
+        code if the validation fails, or False if an error occurs during validation.
+    """
+    
+    try:
+
+        if role_list is None:
+            role_list = ['travel_admin', 'travel_sub_admin']
+
+        if user.role_id.name not in role_list:
+            return create_response(
+                success=False,
+                message='Invalid role.',
+                status=401
             )
 
     except:

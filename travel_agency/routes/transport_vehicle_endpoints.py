@@ -1,9 +1,8 @@
 from django.urls import path
-from travel_agency.views.travel_agency_view import TravelAgency
+from travel_agency.views.transport_vehicle_view import TransportVehicleManagement
 
 
 urlpatterns = [
-    path('transport/vehicle/<uuid:user_id>', TravelAgency.as_view()),
-    path('transport/vehicle/get/<uuid:user_id>', TravelAgency.as_view()),
-    path('transport/vehicle/<uuid:transport_vehicle_id>', TravelAgency.as_view()),
+    path('user/<uuid:user_id>', TransportVehicleManagement.as_view(), name='add_transport_vehicle'),
+    path('user/<uuid:user_id>/vehicle/<uuid:transport_vehicle_id>', TransportVehicleManagement.as_view(), name='manage_transport_vehicle'),
 ]

@@ -4,48 +4,60 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from travel_agency.models import TransportVehicle
-from utils.utils import create_response, get_user_by_id, update_record
 from travel_agency.serializer.transport_vehicle_serializer import TransportVehicleSerializer
+from utils.utils import create_response, get_user_by_id, update_record, validate_travel_agency_roles, check_permissions
 
 class TransportVehicleManagement(APIView): 
 
     def get(self, request: Request, 
-            user_id: uuid.UUID=None,
-            transport_vehicle_id: uuid.UUID=None, 
+            user_id: uuid.UUID, 
+            transport_vehicle_id: uuid.UUID=None,
         ) -> Response:
-        
+
         try:
-            if user_id:
-                transport_vehicle_list = TransportVehicle.objects.filter(user_id=user_id).values().all()
+
+            user = get_user_by_id(user_id=user_id)
+            validate_role = validate_travel_agency_roles(user=user)
+
+            if validate_role:
+                return validate_role
+
+            permission = check_permissions(user=user, permission_type='read')
+            
+            if permission:
+                return permission
+            
+            if transport_vehicle_id:
+                transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).values().first()
 
                 if not transport_vehicle:
                     return create_response(
                         success=False,
-                        message='Transport vehicle not found.',
+                        message='Vehicle not found.',
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Transport vehicle details.',
-                    data=list(transport_vehicle_list),
+                    message='Vehicle details.',
+                    data=transport_vehicle,
                     status=200
                 )
-                
-            if transport_vehicle_id:
-                transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).first()
+            
+            else:
+                transport_vehicle_list = TransportVehicle.objects.filter(user_id=user_id).values().all()
 
-                if not transport_vehicle:
+                if not transport_vehicle_list:
                     return create_response(
                         success=False,
-                        message='Transport vehicle not found.',
+                        message='Vehicle not found.',
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Transport vehicle details.',
-                    data=transport_vehicle,
+                    message='Vehicles details list.',
+                    data=list(transport_vehicle_list),
                     status=200
                 )
 
@@ -55,9 +67,11 @@ class TransportVehicleManagement(APIView):
                 message="Something went wrong!",
                 status=500
             )
-
+        
     
-    def post(self, request: Request, user_id: uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            user_id: uuid.UUID,
+        ) -> Response:
         try:
             user = get_user_by_id(user_id=user_id)
 
@@ -67,6 +81,16 @@ class TransportVehicleManagement(APIView):
                     message='User not found.',
                     status=404
                 )
+            
+            validate_role = validate_travel_agency_roles(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='write')
+            
+            if permission:
+                return permission
             
             serializer = TransportVehicleSerializer(data=request.data)
 
@@ -79,7 +103,7 @@ class TransportVehicleManagement(APIView):
                 if tour_package_instance:
                     return create_response(
                         success=False,
-                        message='Transport vehicle already exist.',
+                        message='Vehicle already exist.',
                         status=404
                     )
                 
@@ -108,16 +132,30 @@ class TransportVehicleManagement(APIView):
             )
         
     
-    def put(self, request: Request, transport_vehicle_id: uuid.UUID) -> Response:
+    def put(self, request: Request, 
+            user_id: uuid.UUID=None, 
+            transport_vehicle_id: uuid.UUID=None,
+        ) -> Response:
         try:
             transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).first()
+            user = get_user_by_id(user_id=user_id)
 
             if not transport_vehicle:
                 return create_response(
                     success=False,
-                    message='Transport vehicle not found.',
+                    message='Vehicle not found.',
                     status=404
-                )
+                )   
+            
+            validate_role = validate_travel_agency_roles(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='update')
+            
+            if permission:
+                return permission
             
             serializer = TransportVehicleSerializer(data=request.data, partial=True)
 
@@ -135,7 +173,7 @@ class TransportVehicleManagement(APIView):
                 
                 return create_response(
                     success=True,
-                    message='Transport vehicle updated.',
+                    message='Vehicle updated.',
                     status=201
                 )
 
@@ -156,26 +194,37 @@ class TransportVehicleManagement(APIView):
             )
         
 
-    def delete(self, request: Request, transport_vehicle_id) -> Response:
+    def delete(self, request: Request, 
+            user_id: uuid.UUID=None, 
+            transport_vehicle_id: uuid.UUID=None,
+        ) -> Response:
         try:
             transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).first()
+            user = get_user_by_id(user_id=user_id)
 
             if not transport_vehicle:
                 return create_response(
                     success=False,
-                    message='Transport vehicle not found.',
+                    message='Vehicle not found.',
                     status=404
                     )
             
-            transport_vehicle.delete()
+            validate_role = validate_travel_agency_roles(user=user)
 
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='delete')
+            
+            if permission:
+                return permission
+            
+            transport_vehicle.delete()
             return create_response(
                 success=True,
-                message='Transport vehicle deleted.',
+                message='Vehicle deleted.',
                 status=204
             )
-
-            pass
 
         except:
             return create_response(

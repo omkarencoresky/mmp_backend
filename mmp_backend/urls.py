@@ -18,12 +18,24 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
+    # Admin urls
     path('admin/', admin.site.urls),
+
+    # Users urls
     path('', include('users.routes.user_endpoints')),
     path('user/', include('users.routes.address_endpoints')),
+
+    # Company urls
     path('company/', include('users.routes.company_endpoints')),
+
+    # Driver urls
     path('driver/', include('driver.routes.driver_endpoints')),
-    path('travel/agency/', include('travel_agency.routes.travel_agency_endpoints')),
+
+    # Travel Agency urls
+    path('api/travel/agency/', include('travel_agency.routes.travel_agency_endpoints')),
+    path('api/transport/vehicle/', include('travel_agency.routes.transport_vehicle_endpoints')),
+
+    # Package Provider urls
     path('api/package/provider/', include('package_provider.routes.package_provider_endpoints')),
     path('api/tour/package/', include('package_provider.routes.tour_package_endpoints')),
 ]

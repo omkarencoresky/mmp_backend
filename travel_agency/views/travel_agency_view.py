@@ -3,8 +3,8 @@ from common_app.models import User
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from utils.utils import create_response, create_user
 from users.serializer.register_serializer import UserRegistrationSerializer 
+from utils.utils import create_response, create_user, validate_travel_agency_roles
 
 class TravelAgency(APIView):
     """
@@ -39,12 +39,17 @@ class TravelAgency(APIView):
         try:
             creator = User.objects.filter(id=creator_id).first()
 
-            if not creator or creator.role_id.name != 'travel_admin':
+            if not creator:
                 return create_response(
                     success=False,  
-                    message='Creator not found or in-valid Creator role.',
+                    message='Creator not found.',
                     status=404
                 )
+
+            validate_role = validate_travel_agency_roles(creator, role_list=['travel_admin'])
+
+            if validate_role:
+                return validate_role
             
             serializer = UserRegistrationSerializer(data=request.data)
 

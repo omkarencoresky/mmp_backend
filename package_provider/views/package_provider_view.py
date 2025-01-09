@@ -39,17 +39,18 @@ class PackageProvider(APIView):
         try:
             creator = User.objects.filter(id=creator_id).first()
 
-            validate_role = validate_package_provider_roles(creator)
-
-            if validate_role:
-                return validate_role
-
             if not creator:
                 return create_response(
                     success=False,  
                     message='Creator not found.',
                     status=404
                 )
+            
+            validate_role = validate_package_provider_roles(creator, role_list=['package_admin'])
+
+            if validate_role:
+                return validate_role
+
             
             serializer = UserRegistrationSerializer(data=request.data)
 
