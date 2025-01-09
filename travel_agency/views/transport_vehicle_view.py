@@ -9,10 +9,35 @@ from utils.utils import create_response, get_user_by_id, update_record, validate
 
 class TransportVehicleManagement(APIView): 
 
+    """
+    APIView for managing transport vehicles in a travel agency system.
+
+    This class provides methods for CRUD operations on transport vehicles,
+    including retrieving vehicle details or a list of vehicles, adding a new
+    vehicle, updating existing vehicle details, and deleting a vehicle.
+    User roles and permissions are validated before performing any operation.
+    
+    """
+
     def get(self, request: Request, 
             user_id: uuid.UUID, 
             transport_vehicle_id: uuid.UUID=None,
         ) -> Response:
+
+        """
+        Retrieve transport vehicle details or a list of vehicles for a user.
+
+        Args:
+            request (Request): The request object containing user and query parameters.
+            user_id (uuid.UUID): The ID of the user whose vehicles are being queried.
+            transport_vehicle_id (uuid.UUID, optional): The ID of the specific vehicle to retrieve.
+
+        Returns:
+            Response: 
+                - 200: Success with vehicle details or list of vehicles.
+                - 404: Vehicle not found or no vehicles associated with the user.
+                - 500: Internal server error.
+        """
 
         try:
 
@@ -72,6 +97,22 @@ class TransportVehicleManagement(APIView):
     def post(self, request: Request, 
             user_id: uuid.UUID,
         ) -> Response:
+
+        """
+        Add a new transport vehicle to the system.
+
+        Args:
+            request (Request): The request object containing transport vehicle details.
+            user_id (uuid.UUID): The ID of the user adding the vehicle.
+
+        Returns:
+            Response: 
+                - 201: Vehicle successfully added.
+                - 400: Validation error with vehicle data.
+                - 404: User not found.
+                - 500: Internal server error.
+        """
+
         try:
             user = get_user_by_id(user_id=user_id)
 
@@ -136,6 +177,23 @@ class TransportVehicleManagement(APIView):
             user_id: uuid.UUID=None, 
             transport_vehicle_id: uuid.UUID=None,
         ) -> Response:
+
+        """
+        Update details of an existing transport vehicle.
+
+        Args:
+            request (Request): The request object containing updated vehicle details.
+            user_id (uuid.UUID, optional): The ID of the user updating the vehicle.
+            transport_vehicle_id (uuid.UUID, optional): The ID of the vehicle to update.
+
+        Returns:
+            Response: 
+                - 201: Vehicle successfully updated.
+                - 400: Validation error with updated data.
+                - 404: Vehicle not found.
+                - 500: Internal server error.
+        """
+
         try:
             transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).first()
             user = get_user_by_id(user_id=user_id)
@@ -198,6 +256,22 @@ class TransportVehicleManagement(APIView):
             user_id: uuid.UUID=None, 
             transport_vehicle_id: uuid.UUID=None,
         ) -> Response:
+
+        """
+        Delete a transport vehicle from the system.
+
+        Args:
+            request (Request): The request object.
+            user_id (uuid.UUID, optional): The ID of the user deleting the vehicle.
+            transport_vehicle_id (uuid.UUID, optional): The ID of the vehicle to delete.
+
+        Returns:
+            Response: 
+                - 204: Vehicle successfully deleted.
+                - 404: Vehicle not found.
+                - 500: Internal server error.
+        """
+
         try:
             transport_vehicle = TransportVehicle.objects.filter(id=transport_vehicle_id).first()
             user = get_user_by_id(user_id=user_id)

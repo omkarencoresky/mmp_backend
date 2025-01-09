@@ -21,32 +21,6 @@ class Role(models.Model):
         db_table = 'roles'
 
 
-class Permission(models.Model):
-    PERMISSION_CHOICES = ['read', 'write', 'delete', 'update', 'all']
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
-    permission = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-
-    def save(self, *args, **kwargs):
-        """
-        Ensure permissions are valid before saving.
-        """
-        permissions_list = self.permission.split(',')
-        invalid_permissions = [
-            perm for perm in permissions_list if perm.strip() not in self.PERMISSION_CHOICES
-        ]
-        if invalid_permissions:
-            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
-        self.permission = ','.join([perm.strip() for perm in permissions_list])
-        super().save(*args, **kwargs)
-
-    class Meta:
-        db_table = 'permission'
-
 
 class User(models.Model):
 
@@ -96,12 +70,6 @@ class User(models.Model):
         """
         return check_password(raw_password, self.password)
     
-    
-    def get_user_by_idname(self):
-        """
-        Return the username used for authentication, which is 'email' in this case.
-        """
-        return self.email
 
 
 class User_Address(models.Model):
@@ -150,6 +118,35 @@ class OAuthAccessToken(models.Model):
     class Meta:
         db_table = 'oauth_access_token'
 
+
+class Permission(models.Model):
+
+    PERMISSION_CHOICES = ['read', 'write', 'delete', 'update']
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
+    permission = models.CharField(max_length=100)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_created_by')
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_updated_by', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    def save(self, *args, **kwargs):
+        """
+        Ensure permissions are valid before saving.
+        """
+        permissions_list = self.permission.split(',')
+        invalid_permissions = [
+            perm for perm in permissions_list if perm.strip() not in self.PERMISSION_CHOICES
+        ]
+        if invalid_permissions:
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
+        self.permission = ','.join([perm.strip() for perm in permissions_list])
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'permission'
 
 
 class Company(models.Model):

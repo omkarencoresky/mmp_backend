@@ -1,7 +1,6 @@
 from rest_framework import serializers
-from django.core.validators import RegexValidator
-from common_app.models import User  # Adjust import based on your project structure
 from utils.utils import create_response
+from django.core.validators import RegexValidator
 
 
 class DriverSerializer(serializers.Serializer):

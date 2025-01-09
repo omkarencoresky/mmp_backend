@@ -24,9 +24,10 @@ urlpatterns = [
     # Users urls
     path('', include('users.routes.user_endpoints')),
     path('user/', include('users.routes.address_endpoints')),
-
-    # Company urls
     path('company/', include('users.routes.company_endpoints')),
+
+    # Common app urls
+    path('api/permission/', include('common_app.routes.permission_endpoints')),
 
     # Driver urls
     path('driver/', include('driver.routes.driver_endpoints')),
