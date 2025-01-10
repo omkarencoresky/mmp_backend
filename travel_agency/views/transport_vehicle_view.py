@@ -232,7 +232,7 @@ class TransportVehicleManagement(APIView):
                 return create_response(
                     success=True,
                     message='Vehicle updated.',
-                    status=201
+                    status=200
                 )
 
             else:

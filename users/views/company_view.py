@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from users.serializer.company_serializer import CompanySerializer
-from utils.utils import create_response, get_user_by_id, update_record
+from utils.utils import create_response, get_user_by_id, update_record, validate_roles_for_company, check_permissions
 
 class CompanyManagement(APIView):
     """
@@ -43,6 +43,25 @@ class CompanyManagement(APIView):
             - HTTP 500: Internal server error.
         """
         try:
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+            
+            validate_role = validate_roles_for_company(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='read')
+            
+            if permission:
+                return permission
+            
             if company_id:
                 company = Company.objects.filter(id=company_id).values().first()
 
@@ -60,7 +79,7 @@ class CompanyManagement(APIView):
                     status=200
                 )
             
-            if user_id:
+            else:
                 user_company = Company.objects.filter(user_id=user_id).values().all()
 
                 if not user_company:
@@ -84,7 +103,9 @@ class CompanyManagement(APIView):
                 status=500
             )
         
-    def post(self, request: Request, user_id:uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            user_id:uuid.UUID
+        ) -> Response:
         """
         Handles POST requests to create a new company.
 
@@ -107,13 +128,23 @@ class CompanyManagement(APIView):
         """
         try:
             user = get_user_by_id(user_id=user_id)
-
+            
             if not user:
                 return create_response(
                     success=False,
-                    message="User not Found",
-                    status=404,
+                    message='User not found!',
+                    status=404
                 )
+            
+            validate_role = validate_roles_for_company(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='write')
+            
+            if permission:
+                return permission
             
             serializer = CompanySerializer(data=request.data)
             
@@ -152,7 +183,10 @@ class CompanyManagement(APIView):
             )
         
     
-    def put(self, request: Request, company_id: uuid.UUID) -> Response:
+    def put(self, request: Request,
+            company_id: uuid.UUID,
+            user_id:uuid.UUID,
+        ) -> Response:
         """
         Handles PUT requests to update an existing company.
 
@@ -175,6 +209,25 @@ class CompanyManagement(APIView):
         """
 
         try:
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+            
+            validate_role = validate_roles_for_company(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='update')
+            
+            if permission:
+                return permission
+            
             company = Company.objects.filter(id=company_id).first()
             
             if not company:
@@ -222,7 +275,10 @@ class CompanyManagement(APIView):
                 status=500
             )
         
-    def delete(self, request: Request, company_id:uuid.UUID) -> Response:
+    def delete(self, request: Request,
+            company_id:uuid.UUID,
+            user_id:uuid.UUID
+        ) -> Response:
         """
         Handles DELETE requests to delete an existing company.
 
@@ -242,6 +298,25 @@ class CompanyManagement(APIView):
         """
 
         try:
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+            
+            validate_role = validate_roles_for_company(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='read')
+            
+            if permission:
+                return permission
+            
             company = Company.objects.filter(id=company_id).first()
             
             if not company:

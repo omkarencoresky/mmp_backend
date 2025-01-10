@@ -15,7 +15,9 @@ class TravelAgency(APIView):
     ensures input data integrity using a serializer, and delegates the actual user 
     creation to a utility function.
     """
-    def post(self, request: Request, creator_id: uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            creator_id: uuid.UUID
+        ) -> Response:
         """
         Handles POST requests for travel agency registration.
 

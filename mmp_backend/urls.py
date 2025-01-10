@@ -18,25 +18,33 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    # Admin urls
+
+    # -------------------------------Admin-----------------------
     path('admin/', admin.site.urls),
 
-    # Users urls
-    path('', include('users.routes.user_endpoints')),
-    path('user/', include('users.routes.address_endpoints')),
-    path('company/', include('users.routes.company_endpoints')),
 
-    # Common app urls
+    # -------------------------------Users----------------------------
+    path('api/', include('users.routes.user_endpoints')),
+    path('api/address/', include('users.routes.address_endpoints')),
+    path('api/company/', include('users.routes.company_endpoints')),
+
+
+    # -------------------------------Common app-----------------------------
     path('api/permission/', include('common_app.routes.permission_endpoints')),
+    path('api/user/permission/', include('common_app.routes.user_permission_endpoints')),
 
-    # Driver urls
-    path('driver/', include('driver.routes.driver_endpoints')),
 
-    # Travel Agency urls
+    # -------------------------------Driver------------------------------------
+    path('api/driver/', include('driver.routes.driver_endpoints')),
+
+
+    # -------------------------------Travel Agency----------------------------------
     path('api/travel/agency/', include('travel_agency.routes.travel_agency_endpoints')),
     path('api/transport/vehicle/', include('travel_agency.routes.transport_vehicle_endpoints')),
 
-    # Package Provider urls
-    path('api/package/provider/', include('package_provider.routes.package_provider_endpoints')),
+
+    # -------------------------------Package Provider------------------------------------
     path('api/tour/package/', include('package_provider.routes.tour_package_endpoints')),
+    path('api/daily/itinerary/', include('package_provider.routes.daily_itinerary_endpoints')),
+    path('api/package/provider/', include('package_provider.routes.package_provider_endpoints')),
 ]

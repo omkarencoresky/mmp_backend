@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from common_app.models import User, User_Address
 from users.serializer.address_serializer import AddressSerializer
 from utils.utils import (create_response, is_user_id_exist, 
-                         fetch_address_details, get_address_by_id, 
-                         update_record)
+                        fetch_address_details, get_address_by_id, 
+                        update_record, check_permissions, get_user_by_id)
 
 class Addresses(APIView):
     """
@@ -42,6 +42,20 @@ class Addresses(APIView):
             - HTTP 500: Unexpected error.
         """
         try:
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+                    
+            permission = check_permissions(user=user, permission_type='read')
+            
+            if permission:
+                return permission
+            
             if address_id:
                 address = fetch_address_details(address_id=address_id)
 
@@ -59,7 +73,7 @@ class Addresses(APIView):
                         data=address    
                     )                
 
-            if user_id:
+            else:
                 addresses = fetch_address_details(user_id=user_id)
                 
                 if len(addresses) <= 0:
@@ -84,7 +98,9 @@ class Addresses(APIView):
             )
         
 
-    def post(self, request: Request, user_id: uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
         """
         Handles POST requests to add a new address for a user.
 
@@ -107,12 +123,19 @@ class Addresses(APIView):
             - HTTP 500: Unexpected error.
         """
         try:
-            if not is_user_id_exist(user_id=user_id):
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
                 return create_response(
-                    success=False,     
-                    message='User not found.',
-                    status=404,
+                    success=False,
+                    message='User not found!',
+                    status=404
                 )
+                        
+            permission = check_permissions(user=user, permission_type='write')
+            
+            if permission:
+                return permission
 
             serializer = AddressSerializer(data=request.data)
 
@@ -154,49 +177,10 @@ class Addresses(APIView):
             )
         
 
-    def delete(self, request: Request, address_id: uuid.UUID) -> Response:
-        """
-        Handles DELETE requests to remove a specific address.
-
-        This method:
-        - Deletes an address by its ID.
-
-        Args:
-            request (Request): The HTTP request object.
-            address_id (uuid.UUID): The ID of the address to be deleted.
-
-        Returns:
-            Response: A response with a status code and message indicating success or failure.
-            - HTTP 204: Address successfully deleted.
-            - HTTP 404: Address not found.
-            - HTTP 500: Unexpected error.
-        """
-        try:
-            address = get_address_by_id(address_id=address_id)
-            
-            if not address:
-                return create_response(
-                    success=False,
-                    message="No address found.",
-                    status=404
-                )
-            
-            address.delete()
-            return create_response(
-                success=True,
-                message="Address deleted!",
-                status=200
-            )
-        
-        except:
-            return create_response(
-                success=False, 
-                message="Something went wrong!", 
-                status=500
-            )
-        
-
-    def put(self, request:Request, address_id: uuid.UUID) -> Response:
+    def put(self, request:Request, 
+            address_id: uuid.UUID,
+            user_id: uuid.UUID
+        ) -> Response:
         """
         Handles PUT requests to update an existing address.
 
@@ -218,6 +202,20 @@ class Addresses(APIView):
             - HTTP 500: Internal server error.
         """
         try:
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+                        
+            permission = check_permissions(user=user, permission_type='update')
+            
+            if permission:
+                return permission
+            
             address = get_address_by_id(address_id=address_id)
             
             if not address:
@@ -265,3 +263,66 @@ class Addresses(APIView):
                 message="Something went wrong!", 
                 status=500
             )
+        
+
+    def delete(self, request: Request, 
+            address_id: uuid.UUID,
+            user_id: uuid.UUID
+        ) -> Response:
+        """
+        Handles DELETE requests to remove a specific address.
+
+        This method:
+        - Deletes an address by its ID.
+
+        Args:
+            request (Request): The HTTP request object.
+            address_id (uuid.UUID): The ID of the address to be deleted.
+
+        Returns:
+            Response: A response with a status code and message indicating success or failure.
+            - HTTP 204: Address successfully deleted.
+            - HTTP 404: Address not found.
+            - HTTP 500: Unexpected error.
+        """
+        try:
+
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+                        
+            permission = check_permissions(user=user, permission_type='delete')
+            
+            if permission:
+                return permission
+            
+            address = get_address_by_id(address_id=address_id)
+            
+            if not address:
+                return create_response(
+                    success=False,
+                    message="No address found.",
+                    status=404
+                )
+            
+            address.delete()
+            return create_response(
+                success=True,
+                message="Address deleted!",
+                status=200
+            )
+        
+        except:
+            return create_response(
+                success=False, 
+                message="Something went wrong!", 
+                status=500
+            )
+        
+
+    

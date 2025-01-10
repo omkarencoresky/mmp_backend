@@ -218,7 +218,9 @@ class UserManagement(APIView):
 
     Each method includes error handling to provide meaningful responses in case of issues.
     """
-    def get(self, request: Request, user_id: uuid.UUID=None) -> Response:
+    def get(self, request: Request, 
+            user_id: uuid.UUID=None
+        ) -> Response:
         """
         Handles GET requests to retrieve user information.
 
@@ -271,7 +273,9 @@ class UserManagement(APIView):
                 status=500
             )
             
-    def put(self, request: Request, user_id: uuid.UUID) -> Response:
+    def put(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
         """
         Handles PUT requests to update user information.
 
@@ -341,7 +345,9 @@ class UserManagement(APIView):
             )
             
             
-    def delete(self, request: Request, user_id: uuid.UUID) -> Response:
+    def delete(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
         """
         Handles DELETE requests to remove a user.
 

@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from driver.serializer.driver_serializer import DriverSerializer
-from utils.utils import create_response, get_user_by_id, update_record
+from utils.utils import create_response, get_user_by_id, update_record, validate_travel_agency_roles, check_permissions
 
 class DriverManagement(APIView):
     """
@@ -18,7 +18,56 @@ class DriverManagement(APIView):
     handling for various scenarios such as missing data, validation failures, or server errors.
     
     """
-    def post(self, request: Request, user_id: uuid.UUID) -> Response:
+
+    def get(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
+        """
+        Handles GET requests to retrieve driver details.
+
+        This method:
+        - Fetches the driver's details using the `user_id`.
+        - Returns the driver's details if found.
+
+        Args:
+            request (Request): The HTTP request object.
+            user_id (uuid.UUID): The ID of the user to retrieve the driver details for.
+
+        Returns:
+            Response: A response with a status code and message indicating success or failure.
+            - HTTP 200: Driver details successfully retrieved.
+            - HTTP 404: User not found.
+            - HTTP 500: Internal server error.
+        """
+
+        try:
+            user = Driver.objects.filter(user_id=user_id).values().first()
+
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found.',
+                    status=404
+                ) 
+            
+            return create_response(
+                success= True, 
+                message='User Details',
+                data=user,
+                status=200
+            )
+
+        except Exception as e:
+            return create_response(
+                success=False, 
+                message='Something went wrong', 
+                status=500
+            )
+
+
+    def post(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
         
         """
         Handles POST requests to create a new driver.
@@ -86,53 +135,12 @@ class DriverManagement(APIView):
                 message='Something went wrong', 
                 status=500
             )
-        
+               
 
-    def get(self, request: Request, user_id: uuid.UUID) -> Response:
-        """
-        Handles GET requests to retrieve driver details.
-
-        This method:
-        - Fetches the driver's details using the `user_id`.
-        - Returns the driver's details if found.
-
-        Args:
-            request (Request): The HTTP request object.
-            user_id (uuid.UUID): The ID of the user to retrieve the driver details for.
-
-        Returns:
-            Response: A response with a status code and message indicating success or failure.
-            - HTTP 200: Driver details successfully retrieved.
-            - HTTP 404: User not found.
-            - HTTP 500: Internal server error.
-        """
-
-        try:
-            user = Driver.objects.filter(user_id=user_id).values().first()
-
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found.',
-                    status=404
-                ) 
-            
-            return create_response(
-                success= True, 
-                message='User Details',
-                data=user,
-                status=200
-            )
-
-        except Exception as e:
-            return create_response(
-                success=False, 
-                message='Something went wrong', 
-                status=500
-            )
-        
-
-    def put(self, request: Request, user_id: uuid.UUID) -> Response:
+    def put(self, request: Request, 
+            user_id: uuid.UUID,
+            driver_id: uuid.UUID
+        ) -> Response:
         """
         Handles PUT requests to update an existing driver.
 
@@ -155,7 +163,26 @@ class DriverManagement(APIView):
         """
 
         try:
-            driver = Driver.objects.filter(user_id=user_id).first()
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+            
+            validate_role = validate_travel_agency_roles(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='write')
+            
+            if permission:
+                return permission
+
+            driver = Driver.objects.filter(id=driver_id).first()
 
             if not driver:
                 return create_response(
@@ -203,7 +230,10 @@ class DriverManagement(APIView):
                 status=500
             )
         
-    def delete(self, request: Request, user_id: uuid.UUID) -> Response:
+    def delete(self, request: Request, 
+            user_id: uuid.UUID,
+            driver_id: uuid.UUID
+        ) -> Response:
         """
         Handles DELETE requests to delete a driver.
 
@@ -223,7 +253,26 @@ class DriverManagement(APIView):
         """
         
         try:
-            driver = Driver.objects.filter(user_id=user_id).first()
+            user = get_user_by_id(user_id=user_id)
+            
+            if not user:
+                return create_response(
+                    success=False,
+                    message='User not found!',
+                    status=404
+                )
+            
+            validate_role = validate_travel_agency_roles(user=user)
+
+            if validate_role:
+                return validate_role
+            
+            permission = check_permissions(user=user, permission_type='delete')
+            
+            if permission:
+                return permission
+
+            driver = Driver.objects.filter(id=driver_id).first()
 
             if not driver:
                 return create_response(

@@ -15,7 +15,9 @@ class PackageProvider(APIView):
     role, ensures input data integrity using a serializer, and delegates the user 
     creation process to a utility function.
     """
-    def post(self, request: Request, creator_id: uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            creator_id: uuid.UUID
+        ) -> Response:
         """
         Handles POST requests for package provider registration.
 
