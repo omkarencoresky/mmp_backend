@@ -98,7 +98,9 @@ class PermissionManagement(APIView):
             )
 
 
-    def post(self, request: Request, user_id: uuid.UUID) -> Response:
+    def post(self, request: Request, 
+            user_id: uuid.UUID
+        ) -> Response:
 
         """
         Create a new permission for a user.
@@ -229,7 +231,7 @@ class PermissionManagement(APIView):
                 return create_response(
                     success=True,
                     message='Permission update.',
-                    status=201
+                    status=200
                 )
             
             else:

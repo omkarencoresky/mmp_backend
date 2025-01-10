@@ -174,3 +174,43 @@ class Company(models.Model):
 
     class Meta:
         db_table = 'companies'
+
+
+
+class UserPermission(models.Model):
+
+    permission_choices = [
+        ('read', 'read'),
+        ('write', 'write'),
+        ('delete', 'delete'),
+        ('update', 'update'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_permissions')
+    granted_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='granted_by_permissions')
+    permission = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        """
+        Ensure permissions are valid before saving.
+        This method checks that each permission in the permission list
+        is valid according to the permission_choices.
+        """
+        permissions_list = self.permission.split(',')
+        
+        invalid_permissions = [
+            perm.strip() for perm in permissions_list if perm.strip() not in dict(self.permission_choices).keys()
+        ]
+        
+        if invalid_permissions:
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
+
+        self.permission = ','.join([perm.strip() for perm in permissions_list])
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'user_permissions'
