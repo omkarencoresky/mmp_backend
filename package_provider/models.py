@@ -41,3 +41,41 @@ class TourPackage(models.Model):
 
     class Meta:
         db_table = 'tour_package'
+
+
+    
+class DailyItinerary(models.Model):
+    TRAVEL_MODE_CHOICES = [
+        ('car', 'Car'),
+        ('bus', 'Bus'),
+        ('train', 'Train'),
+        ('flight', 'Flight'),
+        ('boat', 'Boat'),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    package_id = models.ForeignKey(TourPackage, on_delete=models.CASCADE, related_name='itinerary_package_id')
+    itinerary_day = models.IntegerField(null=True, blank=True)
+    activity_description = models.TextField(null=True, blank=True)
+    pin_code = models.CharField(max_length=20, null=True, blank=True)
+    postal_code = models.CharField(max_length=50, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=True, blank=True)
+    country = models.CharField(max_length=100, null=True, blank=True)
+    street_address = models.CharField(max_length=200, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    travel_mode = models.CharField( max_length=10, choices=TRAVEL_MODE_CHOICES, null=True, blank=True )
+    additional_info = models.TextField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        db_table = 'daily_itinerary'

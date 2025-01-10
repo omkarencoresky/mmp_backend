@@ -570,6 +570,35 @@ def validate_travel_agency_roles(user, role_list: list=None):
 
     except:
         return False
+    
+
+def validate_roles_for_company(user):
+    """
+    Validates the role of a user to ensure they are either a 'travel_admin' or 'package_admin'.
+    
+    This function checks the role of the provided user and returns a response indicating
+    whether the user's role is valid or not. If the user's role is not one of the allowed roles 
+    ('travel_admin' or 'package_admin'), the function returns a response with an error message.
+    
+    Args:
+        user (User): A user object that contains the user's role information.
+    
+    Returns:
+        dict or bool: A response dictionary containing the success status, message, and HTTP status
+        code if the validation fails, or False if an error occurs during validation.
+    """
+    
+    try:
+
+        if user.role_id.name not in ['travel_admin', 'package_admin']:
+            return create_response(
+                success=False,
+                message='Invalid role.',
+                status=401
+            )
+
+    except:
+        return False
 
 
 # def token_required(view_func):
