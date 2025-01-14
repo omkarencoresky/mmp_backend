@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from users.serializer.login_serializer import UserLoginSerializer
-from users.serializer.register_serializer import UserRegistrationSerializer
+from users.serializer.register_serializer import UserRegistrationSerializer, UserUpdateSerializer
 
 
 class Register(APIView):
@@ -50,6 +50,11 @@ class Register(APIView):
                 validated_data = serializer.validated_data
                 profile_image = request.FILES.get('profile_url')
 
+                format_validate = image_extension_validator(profile_image)
+
+                if format_validate:
+                    return format_validate
+
                 return create_user(validated_data=validated_data, 
                         profile_image=profile_image
                     )
@@ -61,7 +66,7 @@ class Register(APIView):
                 return create_response(
                     success=False, 
                     message=error_message, 
-                    status=400
+                    status=400  
                 )
             
         except Exception as e:
@@ -83,7 +88,9 @@ class Login(APIView):
 
     """
 
-    def post(self, request: Request) -> Response:
+    def post(self, request: Request, 
+            user_id: uuid.UUID = None
+        ) -> Response:
         """
         Handles POST requests for user login and authentication.
 
@@ -106,90 +113,96 @@ class Login(APIView):
             - HTTP 500: Unexpected error during login or OTP generation.
         """
         try:
-            serializer = UserLoginSerializer(data=request.data)
-            
-            if serializer.is_valid(): 
 
+            if user_id:
+
+                user = get_user_by_id(user_id=user_id)
+                
+                if not user:
+                    return create_response( 
+                        success=False, 
+                        message="User not found",
+                        status=404
+                    )
+                
                 form_data = request.POST
+                otp_input = request.data.get('otp_input')
+
+                if not otp_input:
+                    return create_response(
+                        success=False, 
+                        message='OTP not provided.', 
+                        status=400
+                    )
+                
+                otp_verification, otp_message, status_code = verify_otp(user_id, otp_input)
+
+                if not otp_verification:
+                    return create_response(
+                        success=False, 
+                        message=otp_message, 
+                        status=status_code
+                    )
+                
+                access_token = generate_token(user)
+
+                data = {
+                    "user_id": user.id,
+                    "token_type": access_token.token_type,
+                    "access_token": access_token.access_token,
+                    "expires_in": access_token.expires_at.strftime('%Y-%m-%d %H:%M:%S')
+                }
+
+                return create_response(
+                    success=True, 
+                    message="User login successfully.", 
+                    data=data, 
+                    status=200
+                )
+
+
+            serializer = UserLoginSerializer(data=request.data)
+
+            if serializer.is_valid():   
+                form_data = request.POST
+
                 phone_no = form_data.get('phone_no')
                 country_code = form_data.get('country_code')
+                
+                user = is_phone_number_exist(phone_no, country_code)
 
-                if not is_phone_number_exist(phone_no, country_code):
+                if not user:
                     return create_response(
                         success=False,
                         message=f'Phone number not exist', 
-                        status=400
+                        status=404
                     )
 
-                if 'otp_input' in request.data:
-                    otp_input = form_data.get('otp_input')
-                    otp_verification, otp_message = verify_otp(phone_no, otp_input)
+                otp = generate_otp(user)
 
-                    if not otp_verification:
-                        return create_response(
-                            success=False, 
-                            message=otp_message, 
-                            status=500
-                        )
-
-                    authenticate_user = User.objects.get(phone_no=phone_no)
-
-                    if not authenticate_user:
-                        return create_response(
-                            success=False, 
-                            message="In-valid Phone number.", 
-                            status=404
-                        )
-                    
-                    access_token = generate_token(authenticate_user)
-                    
-                    if access_token is None:
-                        return create_response(
-                            success=False, 
-                            message="Something went wrong, Unable to generate token.", 
-                            status=500
-                        )
-
-                    data = {
-                        "user_id": authenticate_user.id,
-                        "access_token": access_token.access_token,
-                        "token_type": access_token.token_type,
-                        "expires_in": access_token.expires_at.strftime('%Y-%m-%d %H:%M:%S')
-                    }
-
+                if not otp:
                     return create_response(
-                        success=True, 
-                        message="User login successfully.", 
-                        data=data, 
+                        success=False,
+                        message=f'Some thing went wrong!', 
+                        status=500
+                    )
+
+                send_otp_status = send_otp(country_code, phone_no, otp)
+
+                if not send_otp_status:
+                    return create_response(
+                        success=False,
+                        message=f'Something went wrong!', 
+                        status=500
+                    )
+
+                return create_response(
+                        success=True,
+                        message=f'OTP send',
+                        data={'user_id':user.id},
                         status=200
                     )
-
-                else:
-
-                    otp = generate_otp(phone_no)
-
-                    if not otp:
-                        return create_response(
-                            success=False,
-                            message=f'Some thing went wrong!', 
-                            status=500
-                        )
-                    
-                    send_otp_status = send_otp(country_code, phone_no, otp)
-
-                    if not send_otp_status:
-                        return create_response(
-                            success=False,
-                            message=f'Something went wrong!', 
-                            status=500
-                        )
-
-                    return create_response(
-                            success=True,
-                            message=f'OTP send', 
-                            status=200
-                        )
-                
+        
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
@@ -247,11 +260,13 @@ class UserManagement(APIView):
                     return create_response( 
                         success=False, 
                         message="User not found",
+                        data=[],
                         status=404
                     )
+                
                 return create_response( 
                         success=True, 
-                        message="User details", 
+                        message="Retrieved successfully.", 
                         data=user,
                         status=200
                     )
@@ -261,12 +276,12 @@ class UserManagement(APIView):
                 
                 return create_response( 
                         success=True, 
-                        message="Users list.", 
+                        message="Retrieved users successfully.", 
                         data=users,
                         status=200,
                     )
 
-        except Exception as e:
+        except Exception:
             return create_response( 
                 success=False, 
                 message="Something went wrong.", 
@@ -305,29 +320,39 @@ class UserManagement(APIView):
                 message="User Not found!",
                 status=404
             )
-                
-            serializer =  UserRegistrationSerializer(data=request.data, partial=True)
-            
+
+            serializer =  UserUpdateSerializer(data=request.data, partial=True)
+
             if serializer.is_valid():
-                form_data = serializer.validated_data
-                
-                user_update = update_record(user, form_data)
+                validated_data = serializer.validated_data
+
+                user_update, message, status_code = update_record(user, validated_data)
 
                 if not user_update:
-                    
+
                     return create_response(
                     success=False, 
-                    message='Something went wrong', 
-                    status=500
+                    message=message, 
+                    status=status_code
                 )
+
+                profile_image = request.FILES.get('profile_url')
+
+                if profile_image:
+                    format_validate = image_extension_validator(profile_image)
+
+                    if format_validate:
+                        return format_validate
+
+                    update_user_profile_image(user=user, profile_image=profile_image)
 
                 user.save()
                 return create_response(
                     success=True, 
-                    message='User updated!',
+                    message='Updated successfully.',
                     status=200,
                 )
-                                    
+
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
@@ -336,15 +361,15 @@ class UserManagement(APIView):
                     message=error_message, 
                     status=400
                 )
-                
+
         except Exception as e:
             return create_response(
                 success=False,
                 message="Something went wrong!",
                 status=500
             )
-            
-            
+
+
     def delete(self, request: Request, 
             user_id: uuid.UUID
         ) -> Response:
@@ -379,11 +404,11 @@ class UserManagement(APIView):
             user.delete()
             return create_response(
                 success=True,
-                message="User deleted!",
-                status=204
+                message="Deleted successfully!",
+                status=200
             )
                 
-        except Exception as e:
+        except Exception :
             return create_response(
                 success=False,
                 message="Something went wrong!",
