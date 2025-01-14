@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.apps import apps
 from django.contrib.auth.hashers import make_password, check_password
 
 
@@ -214,3 +215,35 @@ class UserPermission(models.Model):
 
     class Meta:
         db_table = 'user_permissions'
+
+
+
+class TourPackageBid(models.Model):
+
+    bid_status_choices = [
+    ('pending', 'pending'),
+    ('bidded', 'bidded'),
+    ('accepted', 'accepted'),   
+    ('rejected', 'rejected'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tour_package_id = models.UUIDField()
+    transport_vehicle_id = models.UUIDField()
+    bid_price = models.DecimalField(max_digits=10, decimal_places=2)
+    bid_status = models.CharField(max_length=15, choices=bid_status_choices, default='pending')
+    additional_info = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_tour_package(self):
+            TourPackage = apps.get_model('package_provider', 'TourPackage')
+            return TourPackage.objects.get(id=self.tour_package_id)
+    
+    
+    def get_transport_vehicle(self):
+            TourPackage = apps.get_model('travel_agency', 'TransportVehicle')
+            return TourPackage.objects.get(id=self.transport_vehicle_id)
+
+    class Meta:
+        db_table = 'tour_package_bids'
