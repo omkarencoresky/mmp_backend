@@ -14,13 +14,6 @@ class UserPermissionSerializer(serializers.Serializer):
         }
     )
 
-    # granted_by = serializers.UUIDField(
-    #     error_messages={
-    #         'required': 'Granted By User ID is required.',
-    #         'blank': 'Granted By User ID may not be blank.',
-    #         'invalid': 'Granted By User ID must be a valid UUID.'
-    #     }
-    # )
 
     permission = serializers.CharField(
         max_length=100,
@@ -54,14 +47,6 @@ class UserPermissionSerializer(serializers.Serializer):
             raise serializers.ValidationError('Invalid user ID.')
         return value
 
-    # def validate_granted_by(self, value):
-    #     """
-    #     Validate the granted_by field to ensure it exists in the database.
-    #     """
-    #     validated_granted_by = User.objects.filter(id=value).first()
-    #     if not validated_granted_by:
-    #         raise serializers.ValidationError('Invalid granted_by user ID.')
-    #     return value
 
     def validate_permission(self, value):
         """
@@ -78,6 +63,7 @@ class UserPermissionSerializer(serializers.Serializer):
             raise serializers.ValidationError(f"Invalid permissions: {', '.join(invalid_permissions)}")
         
         return ','.join([perm.strip() for perm in permissions_list])
+
 
     def validate(self, data):
         """

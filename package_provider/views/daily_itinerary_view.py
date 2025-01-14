@@ -65,12 +65,13 @@ class DailyItineraryManagement(APIView):
                     return create_response(
                         success=False,
                         message='Itinerary not found',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Itinerary list',
+                    message='Retrieved itinerary.',
                     data=list(itinerary_list),
                     status=200
                 )
@@ -82,12 +83,13 @@ class DailyItineraryManagement(APIView):
                     return create_response(
                         success=False,
                         message='Itinerary not found',
+                        data=[],
                         status=404
                     )
 
                 return create_response(
                     success=True,
-                    message='Itinerary details',
+                    message='Retrieved itineraries',
                     data=itinerary,
                     status=200
                 )
@@ -220,13 +222,13 @@ class DailyItineraryManagement(APIView):
                 validated_data = serializer.validated_data
                 itinerary = DailyItinerary.objects.filter(id=itinerary_id).first()
 
-                update_itinerary = update_record(itinerary, validated_data)
+                update_itinerary, message, status_code = update_record(itinerary, validated_data)
 
                 if not update_itinerary:
                     return create_response(
                         success=False,
-                        message='Something went wrong.',
-                        status=500
+                        message=message,
+                        status=status_code
                     )
                 
                 itinerary.save()
@@ -305,7 +307,7 @@ class DailyItineraryManagement(APIView):
             return create_response(
                 success=True,
                 message='Itinerary delete',
-                status=204
+                status=200
             )
 
         except:

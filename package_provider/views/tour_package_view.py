@@ -56,13 +56,14 @@ class TourPackageManagement(APIView):
                     return create_response(
                         success=False,
                         message='Package not found.',
+                        data=[],
                         status=404
                     )
                 
                 
                 return create_response (
                     success=True,
-                    message='Packages detail.',
+                    message='Retrieved successfully.',
                     data=package,
                     status=200
                 )
@@ -74,12 +75,13 @@ class TourPackageManagement(APIView):
                     return create_response(
                         success=False,
                         message='No package associated with this user.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='User package list.',
+                    message='Retrieved packages successfully.',
                     data=list(user_packages),
                     status=200
                 )
@@ -219,13 +221,13 @@ class TourPackageManagement(APIView):
             if serializer.is_valid():
                 validated_data = serializer.validated_data
 
-                package_update = update_record(package, validated_data)
+                package_update, message, status_code = update_record(package, validated_data)
 
                 if not package_update:
                     return create_response(
                         success=False,
-                        message='Something went wrong.',
-                        status=500
+                        message=message,
+                        status=status_code
                     )
                 
                 package.save()
@@ -298,7 +300,7 @@ class TourPackageManagement(APIView):
             return create_response(
                 success=True,
                 message='Tour package delete.',
-                status=204
+                status=200
             )
         
         except:

@@ -20,7 +20,7 @@ class DriverManagement(APIView):
     """
 
     def get(self, request: Request, 
-            user_id: uuid.UUID
+            user_id: uuid.UUID=None
         ) -> Response:
         """
         Handles GET requests to retrieve driver details.
@@ -41,21 +41,43 @@ class DriverManagement(APIView):
         """
 
         try:
-            user = Driver.objects.filter(user_id=user_id).values().first()
+            if user_id:
+                
+                user = Driver.objects.filter(user_id=user_id).values().first()
 
-            if not user:
+                if not user:
+                    return create_response(
+                        success=False,
+                        message='User not found.',
+                        data=[],
+                        status=404
+                    ) 
+                
                 return create_response(
-                    success=False,
-                    message='User not found.',
-                    status=404
-                ) 
+                    success= True, 
+                    message='Retrieved successfully.',
+                    data=user,
+                    status=200
+                )
             
-            return create_response(
-                success= True, 
-                message='User Details',
-                data=user,
-                status=200
-            )
+            else:
+
+                user_list = Driver.objects.values().all()
+                
+                if not user_list:
+                    return create_response(
+                        success=False,
+                        message='User not found.',
+                        data=[],
+                        status=404
+                    ) 
+                
+                return create_response(
+                    success= True, 
+                    message='Retrieved drivers successfully',
+                    data=list(user_list),
+                    status=200
+                )
 
         except Exception as e:
             return create_response(
@@ -135,10 +157,9 @@ class DriverManagement(APIView):
                 message='Something went wrong', 
                 status=500
             )
-               
+
 
     def put(self, request: Request, 
-            user_id: uuid.UUID,
             driver_id: uuid.UUID
         ) -> Response:
         """
@@ -163,24 +184,6 @@ class DriverManagement(APIView):
         """
 
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-            
-            validate_role = validate_travel_agency_roles(user=user)
-
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='write')
-            
-            if permission:
-                return permission
 
             driver = Driver.objects.filter(id=driver_id).first()
 
@@ -196,14 +199,14 @@ class DriverManagement(APIView):
             if serializer.is_valid():
                 validated_data = serializer.validated_data
 
-                driver_instance = update_record(driver, validated_data)
+                driver_instance, message, status_code = update_record(driver, validated_data)
 
                 if not driver_instance:
                     
                     return create_response(
                     success=False, 
-                    message='Something went wrong', 
-                    status=500
+                    message=message, 
+                    status=status_code
                 )
 
                 driver.save()
@@ -231,7 +234,6 @@ class DriverManagement(APIView):
             )
         
     def delete(self, request: Request, 
-            user_id: uuid.UUID,
             driver_id: uuid.UUID
         ) -> Response:
         """
@@ -253,24 +255,6 @@ class DriverManagement(APIView):
         """
         
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-            
-            validate_role = validate_travel_agency_roles(user=user)
-
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='delete')
-            
-            if permission:
-                return permission
 
             driver = Driver.objects.filter(id=driver_id).first()
 
@@ -285,7 +269,7 @@ class DriverManagement(APIView):
             return create_response(
                 success= True, 
                 message='Driver delete',
-                status=204
+                status=200
             )
 
         except Exception as e:

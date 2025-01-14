@@ -16,7 +16,7 @@ class PackageProvider(APIView):
     creation process to a utility function.
     """
     def post(self, request: Request, 
-            creator_id: uuid.UUID
+            user_id: uuid.UUID
         ) -> Response:
         """
         Handles POST requests for package provider registration.
@@ -28,7 +28,7 @@ class PackageProvider(APIView):
 
         Args:
             request (Request): The HTTP request object containing package provider registration details.
-            creator_id (uuid.UUID): The UUID of the user initiating the creation request, 
+            user_id (uuid.UUID): The UUID of the user initiating the creation request, 
             who must have a `package_admin` role.
 
         Returns:
@@ -39,7 +39,7 @@ class PackageProvider(APIView):
             - HTTP 500: Unexpected error during registration.
         """
         try:
-            creator = User.objects.filter(id=creator_id).first()
+            creator = User.objects.filter(id=user_id).first()
 
             if not creator:
                 return create_response(
@@ -63,7 +63,7 @@ class PackageProvider(APIView):
                 
                 return create_user(validated_data=validated_data, 
                         profile_image=profile_image,
-                        creator_id=creator_id
+                        user_id=user_id
                     )
 
             else:

@@ -4,6 +4,7 @@ from common_app.models import User
 
 # Create your models here.
 class TourPackage(models.Model):
+    
     TRIP_TYPE_CHOICES = [
         ('honeymoon', 'Honeymoon'),
         ('adventure', 'Adventure'),

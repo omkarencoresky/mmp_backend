@@ -55,23 +55,23 @@ class PermissionManagement(APIView):
                 return user_permission
 
             if permission_id:
-
                 permission = Permission.objects.filter(id=permission_id).values().first()
 
                 if not permission:
                     return create_response(
                         success=False,
                         message='Permission not found.',
+                        data=[],
                         status=404
                     )
 
                 return create_response(
                         success=True,
-                        message='Permission Detail.',
+                        message='Retrieved successfully.',
                         data=permission,
                         status=200
                     )
-            
+
             else:
 
                 permission_list = Permission.objects.filter(created_by=user_id).values().all()
@@ -80,12 +80,13 @@ class PermissionManagement(APIView):
                     return create_response(
                         success=False,
                         message='Permission not found.',
+                        data=[],
                         status=404
                     )
 
                 return create_response(
                         success=True,
-                        message='Permission Detail.',
+                        message='Retrieved Permissions successfully.',
                         data=list(permission_list),
                         status=200
                     )
@@ -126,12 +127,12 @@ class PermissionManagement(APIView):
                     message='User not found.',
                     status=404
                 )
-            
+
             user_permission = check_permissions(user=user, permission_type='write')
 
             if user_permission:
                 return user_permission
-            
+
             serializer = PermissionSerializer(data=request.data)
 
             if serializer.is_valid():
@@ -146,7 +147,7 @@ class PermissionManagement(APIView):
                         message='Permission already exist',
                         status=404
                     )
-                
+
                 Permission.objects.create(**validated_data, created_by=user)
 
                 return create_response(
@@ -204,12 +205,12 @@ class PermissionManagement(APIView):
                     message='User not found.',
                     status=404
                 )
-            
+
             user_permission = check_permissions(user=user, permission_type='update')
 
             if user_permission:
                 return user_permission
-                
+
             serializer = PermissionSerializer(data=request.data, partial=True)
 
             if serializer.is_valid():
@@ -218,22 +219,22 @@ class PermissionManagement(APIView):
                 if 'role_id' in validated_data.keys():
                     validated_data['role_id'] = Role.objects.filter(id=validated_data['role_id']).first()
 
-                update_permission = update_record(permission, validated_data)
+                update_permission, message, status_code = update_record(permission, validated_data)
                 
                 if not update_permission:
                     return create_response(
                         success=False,
-                        message='Something went wrong.',
-                        status=500
+                        message=message,
+                        status=status_code
                     )
-                
+
                 permission.save()
                 return create_response(
                     success=True,
                     message='Permission update.',
                     status=200
                 )
-            
+
             else:
                 _, error_details = next(iter(serializer.errors.items()))
                 error_message = error_details[0]
@@ -291,7 +292,7 @@ class PermissionManagement(APIView):
             return create_response(
                 success=True,
                 message='Permission delete',
-                status=204
+                status=200
             )
 
         except:

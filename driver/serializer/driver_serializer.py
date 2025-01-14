@@ -37,7 +37,7 @@ class DriverSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         error_messages={
-            'invalid_choice': 'License type must be one of the following: Two-Wheeler, Commercial, Heavy Vehicle.',
+            'invalid_choice': 'License type must be one of the following: two-wheeler, commercial, heavy Vehicle.',
             'blank': 'License issue date may not be blank.',
             'null': 'License type may not be null.',
         }

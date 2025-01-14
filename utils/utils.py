@@ -65,26 +65,37 @@ def save_image(uploaded_image, user_id: uuid.UUID, role: str):
             image is uploaded.
     """
 
-    try:
-        extension = uploaded_image.name.split('.')[-1].lower()
-        folder_path = os.path.join(settings.BASE_DIR, 'media', role)
-        
-        os.makedirs(folder_path, exist_ok=True)
-
-        filename = f"{user_id}_image.{extension}"
-        file_path = os.path.join(folder_path, filename)
-
-        with open(file_path, 'wb+') as f:
-            for chunk in uploaded_image.chunks():
-                f.write(chunk)
-
-        return os.path.join(settings.MEDIA_URL, role, filename)
+    extension = uploaded_image.name.split('.')[-1].lower()
+    folder_path = os.path.join(settings.BASE_DIR, 'media', role)
     
-    except Exception:
-        return None
+    os.makedirs(folder_path, exist_ok=True)
+
+    filename = f"{user_id}_image.{extension}"
+    file_path = os.path.join(folder_path, filename)
+
+    with open(file_path, 'wb+') as f:
+        for chunk in uploaded_image.chunks():
+            f.write(chunk)
+
+    return os.path.join(settings.MEDIA_URL, role, filename)
+    
     
 
-def create_user(validated_data, profile_image=None, creator_id=None):
+def image_extension_validator(profile_image):
+
+    allowed_extension = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+    extension = profile_image.name.split('.')[-1].lower()
+
+    if extension not in allowed_extension:
+        return create_response(
+            success=False,
+            message='Profile image format In-valid.',
+            status=404
+        )
+    return None
+
+
+def create_user(validated_data, profile_image=None, user_id=None):
     """
     Handles user creation with validation, role assignment, and optional profile image processing.
 
@@ -103,13 +114,22 @@ def create_user(validated_data, profile_image=None, creator_id=None):
             phone_no=validated_data['phone_no'],
             email=validated_data['email']
         )
+        
         if response:
             return response
 
         role_id = validated_data.get('role_id')
-        role = Role.objects.get(id=role_id)
+        role = Role.objects.filter(id=role_id).first()
+        
+        if not role:
+            return create_response(
+                success=False,
+                message='In-valid role.',
+                status=404
+            )
+        
         validated_data['role_id'] = role
-        validated_data['created_by'] = get_user_by_id(user_id=creator_id)
+        validated_data['created_by'] = get_user_by_id(user_id=user_id)
 
         user = User.objects.create(**validated_data)
 
@@ -122,7 +142,7 @@ def create_user(validated_data, profile_image=None, creator_id=None):
 
             if profile_url:
                 user.profile_url = profile_url
-                user.save()
+        user.save()
 
         return create_response(
             success=True,
@@ -136,19 +156,39 @@ def create_user(validated_data, profile_image=None, creator_id=None):
             message="Something went wrong.",
             status=500
         )
+    
 
+def update_user_profile_image(user: User, profile_image) -> str:
+    """
+    Updates the user's profile image by replacing the old image with the new one.
 
-# def is_username_exist(username: str):
-#     """
-#     Checks if a username exists in the User model.
+    This function:
+    - Validates the image format.
+    - Deletes the old profile image (if it exists).
+    - Saves the new profile image and updates the `profile_url`.
 
-#     Args:
-#         username (str): The username to check for existence.
+    Args:
+        user (User): The user object to update.
+        profile_image (InMemoryUploadedFile): The uploaded image file.
 
-#     Returns:
-#         bool: True if the username exists, False otherwise.
-#     """
-#     return User.objects.filter(username=username).exists()
+    Returns:
+        str: The URL of the newly saved profile image if successful, or None if failure.
+    """
+
+    old_image_path = os.path.join(settings.BASE_DIR, 'media', user.profile_url.replace(settings.MEDIA_URL, '').lstrip('/'))
+
+    if os.path.exists(old_image_path):
+        os.remove(old_image_path)
+
+    profile_url = save_image(
+        uploaded_image=profile_image,
+        role=user.role_id.name,
+        user_id=user.id,
+    )
+
+    if profile_url:
+        user.profile_url = profile_url
+
 
 
 def is_email_exist(email: str):
@@ -175,8 +215,8 @@ def is_phone_number_exist(phone_no: str, country_code: str=None):
         bool: True if the phone number exists, False otherwise.
     """
     if country_code:
-        return User.objects.filter(phone_no=phone_no, country_code=country_code).exists()
-    return User.objects.filter(phone_no=phone_no).exists()
+        return User.objects.filter(phone_no=phone_no, country_code=country_code).first()
+    return User.objects.filter(phone_no=phone_no).first()
 
 
 def is_user_id_exist(user_id: uuid.UUID):
@@ -205,15 +245,6 @@ def is_record_exists(username: str = None, email: str = None, phone_no: str = No
         JsonResponse: A JsonResponse indicating if any record exists, or None if record in not exists.
     """
     
-    # if username:
-    #     username = is_username_exist(username)
-
-    #     if username:
-    #         return create_response(
-    #             success=False, 
-    #             message="User with this username already exists", 
-    #             status=400
-    #         )
     
     if email:
         email = is_email_exist(email)
@@ -278,7 +309,7 @@ def generate_token(user):
     except OAuthApplication.DoesNotExist:
         return None
     
-    except Exception as e:
+    except Exception:
         return None
     
 
@@ -308,7 +339,7 @@ def retrieve_user_details(user_id: uuid.UUID = None):
                     )
             return list(data)
 
-    except Exception as e:
+    except Exception:
         return None
     
 
@@ -330,8 +361,15 @@ def fetch_address_details(user_id: uuid.UUID = None, address_id: uuid.UUID = Non
                 ).first()
             return data
         
-        if user_id:
+        elif user_id:
             data =  User_Address.objects.filter(user_id=user_id).values(
+                    'id', 'user_id', 'house_no', 'apartment', 'nearest_landmark', 'pin_code', 'user_id', 
+                    'street_address', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
+                ).all()
+            return list(data)
+        
+        else:
+            data =  User_Address.objects.values(
                     'id', 'user_id', 'house_no', 'apartment', 'nearest_landmark', 'pin_code', 'user_id', 
                     'street_address', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
                 ).all()
@@ -368,7 +406,7 @@ def get_address_by_id(address_id: uuid.UUID):
 
 
 
-def generate_otp(phone_no: str):
+def generate_otp(user: uuid.UUID):
     """
     Generate a OTP and store it in Redis.
     
@@ -378,9 +416,10 @@ def generate_otp(phone_no: str):
     Returns:
     str: OTP
     """
+
     try:
         otp = pyotp.TOTP(pyotp.random_base32()).now()
-        redis_key = f"otp:{phone_no}"
+        redis_key = f"otp:{user.id}"
         redis_client.setex(redis_key, 300, otp)
         return otp
     
@@ -409,14 +448,14 @@ def verify_otp(user_id: uuid.UUID, otp_input: str):
     stored_otp = redis_client.get(redis_key)
     
     if stored_otp is None:
-        return False, "OTP expired."
+        return False, "OTP expired.", 410
     
     if stored_otp == otp_input:
         # OTP is valid
         redis_client.delete(redis_key)
-        return True, "OTP verified successfully."
+        return True, "OTP verified successfully.", 200
     
-    return False, "Invalid OTP."
+    return False, "Invalid OTP.", 409
 
 
 
@@ -457,20 +496,23 @@ def update_record(object, data: dict):
         object: Any
             The object whose attributes are to be updated.
         data (dict): A dictionary where the keys are the attribute names (as strings) 
-                     and the values are the new values to assign to those attributes.
+                    and the values are the new values to assign to those attributes.
 
     Returns:
         bool: 
             - `True` if all attributes were successfully updated.
             - `False` if an exception occurs during the update process.
     """
-    try:
-        for field, value in data.items():
-                setattr(object, field, value)
-        return True
+    if data.get('email') and User.objects.filter(email=data['email']).exclude(email=object.email).exists():
+        return False, 'Email is already exist.', 409
+    
+    if data.get('phone_no') and User.objects.filter(phone_no=data['phone_no']).exclude(phone_no=object.phone_no).exists():
+        return False, 'Phone number is already exist.', 409
 
-    except:
-        return False
+    for field, value in data.items():
+            setattr(object, field, value)
+    # return True, 'Updated', 200
+
     
 
 def check_permissions(user, permission_type:str):

@@ -20,7 +20,7 @@ class TransportVehicleManagement(APIView):
     """
 
     def get(self, request: Request, 
-            user_id: uuid.UUID, 
+            user_id: uuid.UUID,
             transport_vehicle_id: uuid.UUID=None,
         ) -> Response:
 
@@ -59,12 +59,13 @@ class TransportVehicleManagement(APIView):
                     return create_response(
                         success=False,
                         message='Vehicle not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Vehicle details.',
+                    message='Retrieved successfully.',
                     data=transport_vehicle,
                     status=200
                 )
@@ -76,12 +77,13 @@ class TransportVehicleManagement(APIView):
                     return create_response(
                         success=False,
                         message='Vehicle not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Vehicles details list.',
+                    message='Retrieved Vehicles successfully.',
                     data=list(transport_vehicle_list),
                     status=200
                 )
@@ -220,13 +222,13 @@ class TransportVehicleManagement(APIView):
             if serializer.is_valid():
                 validated_data = serializer.validated_data
 
-                transport_vehicle_instance = update_record(transport_vehicle, validated_data)
+                transport_vehicle_instance, status_code = update_record(transport_vehicle, validated_data)
 
                 if not transport_vehicle_instance:
                     return create_response(
                         success= False,
                         message='Something went wrong.',
-                        status=500
+                        status=status_code
                     )
                 
                 return create_response(
@@ -297,7 +299,7 @@ class TransportVehicleManagement(APIView):
             return create_response(
                 success=True,
                 message='Vehicle deleted.',
-                status=204
+                status=200
             )
 
         except:

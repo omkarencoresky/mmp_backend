@@ -42,19 +42,6 @@ class Addresses(APIView):
             - HTTP 500: Unexpected error.
         """
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-                    
-            permission = check_permissions(user=user, permission_type='read')
-            
-            if permission:
-                return permission
             
             if address_id:
                 address = fetch_address_details(address_id=address_id)
@@ -63,32 +50,53 @@ class Addresses(APIView):
                     return create_response( 
                         success=False,     
                         message='Addresses not found.',
+                        data=[],
                         status=404,
                     )
-                
+
                 return create_response(
                         success=True,     
-                        message='Address Details.',
+                        message='Retrieved successfully.',
+                        data=address,    
                         status=200,
-                        data=address    
-                    )                
+                    )
 
-            else:
+            elif user_id:
                 addresses = fetch_address_details(user_id=user_id)
                 
                 if len(addresses) <= 0:
                     return create_response(
                         success=False,     
                         message='No address associate with this user.',
+                        data=[],
+                        status=404  
+                    )
+
+                return create_response(
+                    success=True,     
+                    message='Retrieved Addresses successfully.',
+                    data=list(addresses),
+                    status=200,
+                )
+            
+            else:
+                addresses = fetch_address_details()
+                
+                if len(addresses) <= 0:
+                    return create_response(
+                        success=False,     
+                        message='No address associate with this user.',
+                        data=[],
                         status=404
                     )
 
                 return create_response(
                     success=True,     
-                    message='User Addresses.',
+                    message='Retrieved all Addresses successfully.',
+                    data=list(addresses),
                     status=200,
-                    data=list(addresses)
                 )
+            
             
         except:
             return create_response(
@@ -131,11 +139,6 @@ class Addresses(APIView):
                     message='User not found!',
                     status=404
                 )
-                        
-            permission = check_permissions(user=user, permission_type='write')
-            
-            if permission:
-                return permission
 
             serializer = AddressSerializer(data=request.data)
 
@@ -179,7 +182,6 @@ class Addresses(APIView):
 
     def put(self, request:Request, 
             address_id: uuid.UUID,
-            user_id: uuid.UUID
         ) -> Response:
         """
         Handles PUT requests to update an existing address.
@@ -202,19 +204,6 @@ class Addresses(APIView):
             - HTTP 500: Internal server error.
         """
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-                        
-            permission = check_permissions(user=user, permission_type='update')
-            
-            if permission:
-                return permission
             
             address = get_address_by_id(address_id=address_id)
             
@@ -228,17 +217,16 @@ class Addresses(APIView):
             serializer = AddressSerializer(data=request.data, partial=True)
 
             if serializer.is_valid():
-
                 form_data = serializer.validated_data
 
-                address_update = update_record(address, form_data)
+                address_update, message, status_code = update_record(address, form_data)
 
                 if not address_update:
                     
                     return create_response(
                     success=False, 
-                    message='Something went wrong', 
-                    status=500
+                    message=message, 
+                    status=status_code
                 )
 
                 address.save()
@@ -267,7 +255,6 @@ class Addresses(APIView):
 
     def delete(self, request: Request, 
             address_id: uuid.UUID,
-            user_id: uuid.UUID
         ) -> Response:
         """
         Handles DELETE requests to remove a specific address.
@@ -286,20 +273,6 @@ class Addresses(APIView):
             - HTTP 500: Unexpected error.
         """
         try:
-
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-                        
-            permission = check_permissions(user=user, permission_type='delete')
-            
-            if permission:
-                return permission
             
             address = get_address_by_id(address_id=address_id)
             

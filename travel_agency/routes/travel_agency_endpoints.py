@@ -3,5 +3,5 @@ from travel_agency.views.travel_agency_view import TravelAgency
 
 
 urlpatterns = [
-    path('create/<uuid:creator_id>', TravelAgency.as_view()),
+    path('create/<uuid:user_id>', TravelAgency.as_view()),
 ]

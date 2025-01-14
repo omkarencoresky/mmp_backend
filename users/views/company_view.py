@@ -3,8 +3,8 @@ from common_app.models import Company
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
+from utils.utils import create_response, get_user_by_id
 from users.serializer.company_serializer import CompanySerializer
-from utils.utils import create_response, get_user_by_id, update_record, validate_roles_for_company, check_permissions
 
 class CompanyManagement(APIView):
     """
@@ -43,24 +43,6 @@ class CompanyManagement(APIView):
             - HTTP 500: Internal server error.
         """
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-            
-            validate_role = validate_roles_for_company(user=user)
-
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='read')
-            
-            if permission:
-                return permission
             
             if company_id:
                 company = Company.objects.filter(id=company_id).values().first()
@@ -69,34 +51,64 @@ class CompanyManagement(APIView):
                     return create_response(
                         success=False,
                         message='Company not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Company details.',
+                    message='Retrieved successfully.',
                     data=company,
                     status=200
                 )
+                
+            elif user_id:
+
+                user = get_user_by_id(user_id=user_id)
             
-            else:
+                if not user:
+                    return create_response(
+                        success=False,
+                        message='User not found!',
+                        status=404
+                    )
+                
                 user_company = Company.objects.filter(user_id=user_id).values().all()
 
                 if not user_company:
                     return create_response(
                         success=False,
                         message='Company not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='Company list.',
+                    message='Retrieved companies successfully.',
                     data=list(user_company),
                     status=200
                 )
+            
+            else:
+                companies = Company.objects.values().all()
 
-        except Exception as e:
+                if not companies:
+                    return create_response(
+                        success=False,
+                        message='Company not found.',
+                        data=[],
+                        status=404
+                    )
+                
+                return create_response(
+                    success=True,
+                    message='Retrieved all company successfully.',
+                    data=list(companies),
+                    status=200
+                )
+
+        except Exception:
             return create_response(
                 success=False, 
                 message='Something went wrong', 
@@ -136,16 +148,6 @@ class CompanyManagement(APIView):
                     status=404
                 )
             
-            validate_role = validate_roles_for_company(user=user)
-
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='write')
-            
-            if permission:
-                return permission
-            
             serializer = CompanySerializer(data=request.data)
             
             if serializer.is_valid():
@@ -175,7 +177,7 @@ class CompanyManagement(APIView):
                     status=400
                 )
             
-        except Exception as e:
+        except Exception:
             return create_response(
                 success=False, 
                 message='Something went wrong', 
@@ -183,101 +185,81 @@ class CompanyManagement(APIView):
             )
         
     
-    def put(self, request: Request,
-            company_id: uuid.UUID,
-            user_id:uuid.UUID,
-        ) -> Response:
-        """
-        Handles PUT requests to update an existing company.
+    # def put(self, request: Request,
+    #         company_id: uuid.UUID,
+    #     ) -> Response:
+    #     """
+    #     Handles PUT requests to update an existing company.
 
-        This method:
-        - Checks if the company with the provided `company_id` exists.
-        - Validates the incoming data using `CompanySerializer`.
-        - Updates only the provided fields of the company using `partial=True`.
-        - Saves the updated company data.
+    #     This method:
+    #     - Checks if the company with the provided `company_id` exists.
+    #     - Validates the incoming data using `CompanySerializer`.
+    #     - Updates only the provided fields of the company using `partial=True`.
+    #     - Saves the updated company data.
 
-        Args:
-            request (Request): The HTTP request object containing company data to update.
-            company_id (uuid.UUID): The ID of the company to be updated.
+    #     Args:
+    #         request (Request): The HTTP request object containing company data to update.
+    #         company_id (uuid.UUID): The ID of the company to be updated.
 
-        Returns:
-            Response: A response with a status code and message indicating success or failure.
-            - HTTP 200: Company successfully updated.
-            - HTTP 400: Validation errors.
-            - HTTP 404: Company not found.
-            - HTTP 500: Internal server error.
-        """
+    #     Returns:
+    #         Response: A response with a status code and message indicating success or failure.
+    #         - HTTP 200: Company successfully updated.
+    #         - HTTP 400: Validation errors.
+    #         - HTTP 404: Company not found.
+    #         - HTTP 500: Internal server error.
+    #     """
 
-        try:
-            user = get_user_by_id(user_id=user_id)
+    #     try:
             
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
+    #         company = Company.objects.filter(id=company_id).first()
             
-            validate_role = validate_roles_for_company(user=user)
+    #         if not company:
+    #             return create_response(
+    #                 success=False,
+    #                 message='Company not found.',
+    #                 status=404
+    #             )
+            
+    #         serializer =  CompanySerializer(data=request.data, partial=True)
+            
+    #         if serializer.is_valid():
+    #             form_data = serializer.validated_data
 
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='update')
-            
-            if permission:
-                return permission
-            
-            company = Company.objects.filter(id=company_id).first()
-            
-            if not company:
-                return create_response(
-                    success=False,
-                    message='Company not found.',
-                    status=404
-                )
-            
-            serializer =  CompanySerializer(data=request.data, partial=True)
-            
-            if serializer.is_valid():
-                form_data = serializer.validated_data
+    #             company_update = update_record(company, form_data)
 
-                company_update = update_record(company, form_data)
-
-                if not company_update:
+    #             if not company_update:
                     
-                    return create_response(
-                    success=False, 
-                    message='Something went wrong', 
-                    status=500
-                )
+    #                 return create_response(
+    #                 success=False, 
+    #                 message='Something went wrong', 
+    #                 status=500
+    #             )
 
-                company.save()
-                return create_response(
-                    success=True,
-                    message='Company Update.',
-                    status=200
-                )
+    #             company.save()
+    #             return create_response(
+    #                 success=True,
+    #                 message='Company Update.',
+    #                 status=200
+    #             )
                 
-            else:
-                _, error_details = next(iter(serializer.errors.items()))
-                error_message = error_details[0]
-                return create_response(
-                    success=False, 
-                    message=error_message, 
-                    status=400
-                )
+    #         else:
+    #             _, error_details = next(iter(serializer.errors.items()))
+    #             error_message = error_details[0]
+    #             return create_response(
+    #                 success=False, 
+    #                 message=error_message, 
+    #                 status=400
+    #             )
         
-        except Exception as e:
-            return create_response(
-                success=False, 
-                message='Something went wrong', 
-                status=500
-            )
+    #     except Exception as e:
+    #         return create_response(
+    #             success=False, 
+    #             message='Something went wrong', 
+    #             status=500
+    #         )
         
     def delete(self, request: Request,
             company_id:uuid.UUID,
-            user_id:uuid.UUID
         ) -> Response:
         """
         Handles DELETE requests to delete an existing company.
@@ -298,25 +280,7 @@ class CompanyManagement(APIView):
         """
 
         try:
-            user = get_user_by_id(user_id=user_id)
-            
-            if not user:
-                return create_response(
-                    success=False,
-                    message='User not found!',
-                    status=404
-                )
-            
-            validate_role = validate_roles_for_company(user=user)
-
-            if validate_role:
-                return validate_role
-            
-            permission = check_permissions(user=user, permission_type='read')
-            
-            if permission:
-                return permission
-            
+                        
             company = Company.objects.filter(id=company_id).first()
             
             if not company:
@@ -330,10 +294,10 @@ class CompanyManagement(APIView):
             return create_response(
                 success=True,
                 message='Company delete.',
-                status=204
+                status=200
             )
         
-        except Exception as e:
+        except Exception:
             return create_response(
                 success=False, 
                 message='Something went wrong', 
