@@ -5,7 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from common_app.models import UserPermission
 from common_app.serializer.user_permission_serializer import UserPermissionSerializer
-from utils.utils import create_response, get_user_by_id, validate_roles_for_company, check_permissions
+from utils.utils import create_response, get_user_by_id, check_permissions, update_record
 
 
 class UserPermissionManagement(APIView):
@@ -29,20 +29,21 @@ class UserPermissionManagement(APIView):
 
             if user_permission:
                 return user_permission
-            
+                
             if user_id:
-                user_permission = UserPermission.objects.filter(user_id=user_id).first()
+                user_permission = UserPermission.objects.filter(user_id=user_id).values().first()
 
                 if not user_permission:
                     return create_response(
                         success=False,
                         message='User Permission not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='User permission detail.',
+                    message='Retrieved permission.',
                     data=user_permission,
                     status=200
                 )
@@ -54,12 +55,13 @@ class UserPermissionManagement(APIView):
                     return create_response(
                         success=False,
                         message='User Permission not found.',
+                        data=[],
                         status=404
                     )
                 
                 return create_response(
                     success=True,
-                    message='User permission detail.',
+                    message='Retrieved permissions successfully.',
                     data=list(permission_list),
                     status=200
                 )
@@ -100,6 +102,13 @@ class UserPermissionManagement(APIView):
                         message='User not found.',
                         status=404
                     )
+                
+                if granted_by == validated_data['user_id']:
+                    return create_response(
+                        success=False,
+                        message='In-valid operation.',
+                        status=404
+                    )
 
                 validate_permission = UserPermission.objects.filter(user_id=user).first()
 
@@ -116,7 +125,7 @@ class UserPermissionManagement(APIView):
                                 )
 
                 return create_response(
-                    success=True,
+                    success=True,   
                     message='Permission created.',
                     status=201
                 )
@@ -139,9 +148,60 @@ class UserPermissionManagement(APIView):
             )
 
 
-    def put(self, request: Request) -> Response:
+    def put(self, request: Request, 
+            granted_by: uuid.UUID,
+            user_id: uuid.UUID=None,
+        ) -> Response:
+
         try:
-            pass
+            grant_user = get_user_by_id(user_id=granted_by)
+
+            if not grant_user:
+                return create_response(
+                    success=False,
+                    message='User not found.',
+                    status=404
+                )
+            
+            user_permission = check_permissions(user=grant_user, permission_type='update')
+
+            if user_permission:
+                return user_permission
+            
+            serializer = UserPermissionSerializer(data=request.data, partial=True)
+
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                permission = UserPermission.objects.filter(user_id=user_id).first()
+
+                if not permission:
+                    return create_response(
+                        success=False,
+                        message='Permission not found.',
+                        status=404
+                    )
+                
+                if 'user_id' in validated_data and granted_by == validated_data['user_id']:
+                    return create_response(
+                        success=False,
+                        message='In-valid operation.',
+                        status=404
+                    )
+                
+                permission_update, message, status_code = update_record(permission, validated_data)
+
+                if not permission_update:
+                    return create_response(
+                        success=False,
+                        message=message,
+                        status=status_code
+                    )
+                permission.save()
+                return create_response(
+                    success=True,
+                    message='User permission updated.',
+                    status=200
+                )
 
         except:
             return create_response(
@@ -151,10 +211,42 @@ class UserPermissionManagement(APIView):
             )
 
 
-    def delete(self, request: Request) -> Response:
-        try:
-            pass
+    def delete(self, request: Request, 
+            granted_by: uuid.UUID,
+            user_id: uuid.UUID=None,
+        ) -> Response:
 
+        try:
+            grant_user = get_user_by_id(user_id=granted_by)
+
+            if not grant_user:
+                return create_response(
+                    success=False,
+                    message='User not found.',
+                    status=404
+                )
+            
+            user_permission = check_permissions(user=grant_user, permission_type='delete')
+
+            if user_permission:
+                return user_permission
+            
+            permission = UserPermission.objects.filter(user_id=user_id).first()
+
+            if not permission:
+                return create_response(
+                    success=False, 
+                    message='Permission not found.',
+                    status=404
+                )
+            
+            permission.delete()
+            return create_response(
+                success=True,
+                message='Permission delete ',
+                status=204
+            )
+            
         except:
             return create_response(
                 success=False,
