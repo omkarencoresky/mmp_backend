@@ -614,7 +614,7 @@ def validate_travel_agency_roles(user, role_list: list=None):
         return False
     
 
-def validate_roles_for_company(user):
+def validate_roles_for_admin(user):
     """
     Validates the role of a user to ensure they are either a 'travel_admin' or 'package_admin'.
     
@@ -630,17 +630,14 @@ def validate_roles_for_company(user):
         code if the validation fails, or False if an error occurs during validation.
     """
     
-    try:
 
-        if user.role_id.name not in ['travel_admin', 'package_admin']:
-            return create_response(
-                success=False,
-                message='Invalid role.',
-                status=401
-            )
+    if user.role_id.name not in ['travel_admin', 'package_admin']:
+        return create_response(
+            success=False,
+            message='Invalid role.',
+            status=401
+        )
 
-    except:
-        return False
 
 
 # def token_required(view_func):

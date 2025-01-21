@@ -6,13 +6,13 @@ from django.core.validators import RegexValidator
 
 class PermissionSerializer(serializers.Serializer):    
 
-    role_id = serializers.UUIDField(
-        error_messages={
-            'required': 'Role ID is required.',
-            'blank': 'Role ID may not be blank.',
-            'invalid': 'Role ID must be a valid UUID.'
-        }
-    )
+    # role_id = serializers.UUIDField(
+    #     error_messages={
+    #         'required': 'Role ID is required.',
+    #         'blank': 'Role ID may not be blank.',
+    #         'invalid': 'Role ID must be a valid UUID.'
+    #     }
+    # )
     
     permission = serializers.CharField(
         max_length=100,
@@ -29,14 +29,23 @@ class PermissionSerializer(serializers.Serializer):
         }
     )
 
-    def validate_role_id(self, value):
-        """
-        Validate the role_id field to ensure it exists in the database.
-        """
-        validated_role = Role.objects.filter(id=value).first()
-        if not validated_role:
-            raise serializers.ValidationError('Invalid role ID.')
-        return value
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+        error_messages={
+            'max_length': 'Description must not exceed 500 characters.',
+        }
+    )
+
+    # def validate_role_id(self, value):
+    #     """
+    #     Validate the role_id field to ensure it exists in the database.
+    #     """
+    #     validated_role = Role.objects.filter(id=value).first()
+    #     if not validated_role:
+    #         raise serializers.ValidationError('Invalid role ID.')
+    #     return value
 
 
     def validate(self, data):

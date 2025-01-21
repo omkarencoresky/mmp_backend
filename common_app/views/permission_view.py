@@ -56,7 +56,7 @@ class PermissionManagement(APIView):
 
             if permission_id:
                 permission = Permission.objects.filter(id=permission_id).values().first()
-
+                
                 if not permission:
                     return create_response(
                         success=False,
@@ -148,7 +148,7 @@ class PermissionManagement(APIView):
                         status=404
                     )
 
-                Permission.objects.create(**validated_data, created_by=user)
+                Permission.objects.create(**validated_data)
 
                 return create_response(
                     success=True,

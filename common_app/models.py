@@ -125,10 +125,11 @@ class Permission(models.Model):
     PERMISSION_CHOICES = ['read', 'write', 'delete', 'update']
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
     permission = models.CharField(max_length=100)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_created_by')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_updated_by', null=True, blank=True)
+    description = models.TextField(blank=True,null=True)
+    # role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
+    # created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_created_by')
+    # updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permission_updated_by', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -218,8 +219,8 @@ class UserPermission(models.Model):
 
 
 
-class TourPackageBid(models.Model):
-
+class BidProposal(models.Model):
+    
     bid_status_choices = [
     ('pending', 'pending'),
     ('bidded', 'bidded'),
@@ -228,22 +229,44 @@ class TourPackageBid(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    tour_package_id = models.UUIDField()
-    transport_vehicle_id = models.UUIDField()
+    bid_id = models.UUIDField()
+    travel_agency_id = models.UUIDField()
     bid_price = models.DecimalField(max_digits=10, decimal_places=2)
-    bid_status = models.CharField(max_length=15, choices=bid_status_choices, default='pending')
-    additional_info = models.TextField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def get_tour_package(self):
-            TourPackage = apps.get_model('package_provider', 'TourPackage')
-            return TourPackage.objects.get(id=self.tour_package_id)
-    
-    
+            TourPackage = apps.get_model('package_provider', 'TourPackageBid')
+            return TourPackage.objects.filter(id=self.package_necessities_id).first()
+
+
     def get_transport_vehicle(self):
             TourPackage = apps.get_model('travel_agency', 'TransportVehicle')
-            return TourPackage.objects.get(id=self.transport_vehicle_id)
+            return TourPackage.objects.filter(id=self.travel_agency_id).first()
 
     class Meta:
-        db_table = 'tour_package_bids'
+        db_table = 'bid_proposal'
+
+
+class VehicleType(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    vehicle_type = models.CharField(max_length=50, null=False, blank=False)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "vehicle_type"
+
+
+class RolePermission(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role_id = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_id')
+    permission_id = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name='permission_id')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        db_table = 'role_permission'

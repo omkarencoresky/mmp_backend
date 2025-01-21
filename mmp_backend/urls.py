@@ -32,6 +32,8 @@ urlpatterns = [
     # -------------------------------Common app-----------------------------
     path('api/permission/', include('common_app.routes.permission_endpoints')),
     path('api/user/permission/', include('common_app.routes.user_permission_endpoints')),
+    path('api/tour/package/bidding/', include('common_app.routes.bidding_proposal_endpoints')),
+    
 
 
     # -------------------------------Driver------------------------------------
@@ -47,4 +49,5 @@ urlpatterns = [
     path('api/tour/package/', include('package_provider.routes.tour_package_endpoints')),
     path('api/daily/itinerary/', include('package_provider.routes.daily_itinerary_endpoints')),
     path('api/package/provider/', include('package_provider.routes.package_provider_endpoints')),
+    path('api/package/bid/', include('package_provider.routes.tour_package_bid_endpoints')),
 ]
