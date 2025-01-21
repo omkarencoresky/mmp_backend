@@ -1,9 +1,10 @@
 import uuid
 from django.db import models
-from common_app.models import User
+
 
 # Create your models here.
 class TourPackage(models.Model):
+    from common_app.models import User
     
     TRIP_TYPE_CHOICES = [
         ('honeymoon', 'Honeymoon'),
@@ -80,3 +81,32 @@ class DailyItinerary(models.Model):
 
     class Meta:
         db_table = 'daily_itinerary'
+
+
+
+class TourPackageBid(models.Model):
+    BID_STATUS_CHOICES = [
+        ('pending', 'pending'),
+        # ('bidded', 'bidded'),
+        ('accepted', 'accepted'),
+        ('rejected', 'rejected'),
+    ]
+
+
+    from common_app.models import VehicleType
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    vehicle_type_id = models.ForeignKey(VehicleType, on_delete=models.CASCADE, related_name='vehicle_type_bids')
+    tour_package_id = models.ForeignKey(TourPackage, on_delete=models.CASCADE, related_name='package_bids')
+    approved_proposal_id = models.UUIDField(null=True, blank=True)
+    vehicle_name = models.CharField(max_length=100, null=False)
+    decided_price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
+    seating_capacity = models.IntegerField(null=False)
+    description = models.TextField(blank=True, null=True)
+    bid_status = models.CharField(max_length=10, choices=BID_STATUS_CHOICES, default='pending')
+    proposal_approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tour_package_bid"

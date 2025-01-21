@@ -53,7 +53,6 @@ class PackageProvider(APIView):
             if validate_role:
                 return validate_role
 
-            
             serializer = UserRegistrationSerializer(data=request.data)
 
             if serializer.is_valid():
